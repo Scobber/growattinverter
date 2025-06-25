@@ -626,32 +626,30 @@ void MainPage(void)
 
 void SendPostSite(void)
 {
-    String html = "<form action=\"/postCommunicationModbus_p\" method=\"POST\">";
-    html += "<input type=\"text\" name=\"reg\" placeholder=\"Register ID\"></br>";
-    html += "<input type=\"text\" name=\"val\" placeholder=\"Input Value (16bit only!)\"></br>";
-    html += "<select name=\"type\"><option value=\"16b\" selected>16b</option><option value=\"32b\">32b</option></select></br>";
-    html += "<select name=\"operation\"><option value=\"R\" selected>Read</option><option value=\"W\">Write</option></select></br>";
-    html += "<select name=\"registerType\"><option value=\"I\" selected>Input Register</option><option value=\"H\">Holding Register</option></select></br>";
-    html += "<input type=\"submit\" value=\"Go\">";
-    html += "</form>";
+    httpServer.setContentLength(CONTENT_LENGTH_UNKNOWN);
+    httpServer.send(200, "text/html", "");
 
-    html += "<h3>Input Register Cache</h3>";
-    html += "<table border=\"1\"><tr><th>Register</th><th>Value</th></tr>";
+    httpServer.sendContent("<form action=\"/postCommunicationModbus_p\" method=\"POST\">");
+    httpServer.sendContent("<input type=\"text\" name=\"reg\" placeholder=\"Register ID\"></br>");
+    httpServer.sendContent("<input type=\"text\" name=\"val\" placeholder=\"Input Value (16bit only!)\"></br>");
+    httpServer.sendContent("<select name=\"type\"><option value=\"16b\" selected>16b</option><option value=\"32b\">32b</option></select></br>");
+    httpServer.sendContent("<select name=\"operation\"><option value=\"R\" selected>Read</option><option value=\"W\">Write</option></select></br>");
+    httpServer.sendContent("<select name=\"registerType\"><option value=\"I\" selected>Input Register</option><option value=\"H\">Holding Register</option></select></br>");
+    httpServer.sendContent("<input type=\"submit\" value=\"Go\"></form>");
+
+    httpServer.sendContent("<h3>Input Register Cache</h3><table border=\"1\"><tr><th>Register</th><th>Value</th></tr>");
     for (int i = 0; i < INPUT_REGISTER_CACHE_SIZE; i++)
     {
-        html += "<tr><td>" + String(i) + "</td><td>" + String(inputRegisterCache[i]) + "</td></tr>";
+        httpServer.sendContent("<tr><td>" + String(i) + "</td><td>" + String(inputRegisterCache[i]) + "</td></tr>");
     }
-    html += "</table>";
+    httpServer.sendContent("</table>");
 
-    html += "<h3>Holding Register Cache</h3>";
-    html += "<table border=\"1\"><tr><th>Register</th><th>Value</th></tr>";
+    httpServer.sendContent("<h3>Holding Register Cache</h3><table border=\"1\"><tr><th>Register</th><th>Value</th></tr>");
     for (int i = 0; i < HOLDING_REGISTER_CACHE_SIZE; i++)
     {
-        html += "<tr><td>" + String(i) + "</td><td>" + String(holdingRegisterCache[i]) + "</td></tr>";
+        httpServer.sendContent("<tr><td>" + String(i) + "</td><td>" + String(holdingRegisterCache[i]) + "</td></tr>");
     }
-    html += "</table>";
-
-    httpServer.send(200, "text/html", html);
+    httpServer.sendContent("</table>");
 }
 
 void handlePostData()
