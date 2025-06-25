@@ -35,6 +35,15 @@ e.g. C:\Users\<username>\AppData\Local\Temp\arduino_build_533155
 #error Please rename config.h.example to config.h
 #endif
 
+// Provide sensible defaults if the compile-time flags are not set
+#ifndef ENABLE_MODBUS_COMMUNICATION
+#define ENABLE_MODBUS_COMMUNICATION 1
+#endif
+
+#ifndef ENABLE_WEB_DEBUG
+#define ENABLE_WEB_DEBUG 0
+#endif
+
 
 
 #ifdef ESP8266
