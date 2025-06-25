@@ -83,6 +83,11 @@ uint16_t u16WebMsgNo = 0;
 #if ENABLE_MODBUS_COMMUNICATION
 WiFiServer modbusTcpServer(502);
 WiFiClient modbusClient;
+#define INPUT_REGISTER_CACHE_SIZE 1200
+#define HOLDING_REGISTER_CACHE_SIZE 200
+uint16_t inputRegisterCache[INPUT_REGISTER_CACHE_SIZE];
+uint16_t holdingRegisterCache[HOLDING_REGISTER_CACHE_SIZE];
+#endif
 #endif
 
 #include "Growatt.h"
@@ -206,6 +211,128 @@ void InverterReconnect(void)
             WEB_DEBUG_PRINT("Error: Unknown Shine Stick")
     #endif
 }
+
+#if ENABLE_MODBUS_COMMUNICATION
+void updateModbusCache()
+{
+    for (int i = 0; i < Inverter._Protocol.InputRegisterCount; i++)
+    {
+        uint16_t adr = Inverter._Protocol.InputRegisters[i].address;
+        uint32_t val = Inverter._Protocol.InputRegisters[i].value;
+        if (Inverter._Protocol.InputRegisters[i].size == SIZE_16BIT)
+        {
+            if (adr < INPUT_REGISTER_CACHE_SIZE)
+                inputRegisterCache[adr] = (uint16_t)val;
+        }
+        else
+        {
+            if (adr + 1 < INPUT_REGISTER_CACHE_SIZE)
+            {
+                inputRegisterCache[adr] = (uint16_t)(val >> 16);
+                inputRegisterCache[adr + 1] = (uint16_t)(val & 0xFFFF);
+            }
+        }
+    }
+
+    for (int i = 0; i < Inverter._Protocol.HoldingRegisterCount; i++)
+    {
+        uint16_t adr = Inverter._Protocol.HoldingRegisters[i].address;
+        uint32_t val = Inverter._Protocol.HoldingRegisters[i].value;
+        if (Inverter._Protocol.HoldingRegisters[i].size == SIZE_16BIT)
+        {
+            if (adr < HOLDING_REGISTER_CACHE_SIZE)
+                holdingRegisterCache[adr] = (uint16_t)val;
+        }
+        else
+        {
+            if (adr + 1 < HOLDING_REGISTER_CACHE_SIZE)
+            {
+                holdingRegisterCache[adr] = (uint16_t)(val >> 16);
+                holdingRegisterCache[adr + 1] = (uint16_t)(val & 0xFFFF);
+            }
+        }
+    }
+}
+#endif
+
+#if ENABLE_MODBUS_COMMUNICATION
+void handleModbusTcp()
+{
+    if (!modbusClient || !modbusClient.connected())
+    {
+        modbusClient = modbusTcpServer.available();
+        return;
+    }
+
+    if (!modbusClient.available())
+        return;
+
+    uint8_t mbap[7];
+    if (modbusClient.readBytes(mbap, 7) != 7)
+        return;
+
+    uint16_t pduLen = ((uint16_t)mbap[4] << 8) | mbap[5];
+    if (pduLen < 2)
+        return;
+
+    uint8_t pdu[pduLen];
+    if (modbusClient.readBytes(pdu, pduLen) != pduLen)
+        return;
+
+    uint8_t function = pdu[0];
+    uint16_t startAdr = ((uint16_t)pdu[1] << 8) | pdu[2];
+    uint16_t quantity = ((uint16_t)pdu[3] << 8) | pdu[4];
+
+    uint8_t response[260];
+    response[0] = mbap[0];
+    response[1] = mbap[1];
+    response[2] = 0;
+    response[3] = 0;
+    response[6] = mbap[6];
+
+    const uint16_t *cache = NULL;
+    uint16_t cacheSize = 0;
+
+    if (function == 0x03)
+    {
+        cache = holdingRegisterCache;
+        cacheSize = HOLDING_REGISTER_CACHE_SIZE;
+    }
+    else if (function == 0x04)
+    {
+        cache = inputRegisterCache;
+        cacheSize = INPUT_REGISTER_CACHE_SIZE;
+    }
+
+    if (cache && (startAdr + quantity) <= cacheSize)
+    {
+        response[7] = function;
+        response[8] = quantity * 2;
+        for (uint16_t i = 0; i < quantity; i++)
+        {
+            uint16_t val = cache[startAdr + i];
+            response[9 + i * 2] = val >> 8;
+            response[10 + i * 2] = val & 0xFF;
+        }
+        uint16_t pdulen = 2 + quantity * 2; // fc + bytecount + data
+        uint16_t mbapLen = pdulen + 1;       // unit + pdu
+        response[4] = mbapLen >> 8;
+        response[5] = mbapLen & 0xFF;
+#if ENABLE_DEBUG_OUTPUT == 1
+        Serial.printf("MBTCP FC=%02X adr=%u qty=%u\n", function, startAdr, quantity);
+#endif
+        modbusClient.write(response, 7 + pdulen);
+    }
+    else
+    {
+        response[7] = function | 0x80;
+        response[8] = 0x02; // illegal data address
+        response[4] = 0;
+        response[5] = 3; // unit + exception = 3 bytes
+        modbusClient.write(response, 9);
+    }
+}
+#endif
 
 // -------------------------------------------------------
 // Check the Mqtt status and reconnect if necessary
@@ -616,34 +743,7 @@ void loop()
     long now = millis();
     char readoutSucceeded;
     #if ENABLE_MODBUS_COMMUNICATION
-    if (!modbusClient || !modbusClient.connected()) {
-        modbusClient = modbusTcpServer.available();
-    }
-
-    if (modbusClient && modbusClient.connected() && modbusClient.available()) {
-        // Read the Modbus TCP header (7 bytes)
-        uint8_t mbapHeader[7];
-        if (modbusClient.readBytes(mbapHeader, 7) != 7) {
-        return; // Wait for full header
-        }
-
-        // Extract PDU length
-        uint16_t pduLength = (mbapHeader[4] << 8) | mbapHeader[5];
-
-        // Read the PDU
-        uint8_t pdu[pduLength];
-        if (modbusClient.readBytes(pdu, pduLength) != pduLength) {
-        return; // Wait for full PDU
-        }
-
-        // Now process the request:
-        // You need to dispatch pdu[0] (Function Code), pdu[1..] to your Modbus handler
-        // and build a response to send back.
-
-        // Placeholder: echo reply for testing
-        modbusClient.write(mbapHeader, 7);
-        modbusClient.write(pdu, pduLength);
-    }
+    handleModbusTcp();
     #endif
 
     if ((now - ButtonTimer) > BUTTON_TIMER)
@@ -737,6 +837,10 @@ void loop()
                     WEB_DEBUG_PRINT("ReadData() successful")
                     u16PacketCnt++;
                     u8RetryCounter = NUM_OF_RETRIES;
+
+#if ENABLE_MODBUS_COMMUNICATION
+                    updateModbusCache();
+#endif
 
                     // Create JSON string
                     JsonString[0] = '\0';
