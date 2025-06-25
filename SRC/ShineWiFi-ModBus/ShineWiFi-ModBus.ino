@@ -36,6 +36,7 @@ e.g. C:\Users\<username>\AppData\Local\Temp\arduino_build_533155
 #endif
 
 
+
 #ifdef ESP8266
 #include <ESP8266HTTPUpdateServer.h>
 #elif ESP32
@@ -78,6 +79,10 @@ uint16_t u16WebMsgNo = 0;
 
 #if MQTT_SUPPORTED == 1
 #include <PubSubClient.h>
+#endif
+#if ENABLE_MODBUS_COMMUNICATION
+WiFiServer modbusTcpServer(502);
+WiFiClient modbusClient;
 #endif
 
 #include "Growatt.h"
@@ -423,6 +428,12 @@ void setup()
         #endif
         MqttClient.setServer(mqttserver.c_str(), port);
     #endif
+    
+    #if ENABLE_MODBUS_COMMUNICATION
+    modbusTcpServer.begin();
+    modbusTcpServer.setNoDelay(true); // Optional: reduce latency
+    Serial.println("✅ Modbus TCP server started on port 502");
+    #endif
 
     httpServer.on("/status", SendJsonSite);
     httpServer.on("/uistatus", SendUiJsonSite);
@@ -604,6 +615,36 @@ void loop()
 
     long now = millis();
     char readoutSucceeded;
+    #if ENABLE_MODBUS_COMMUNICATION
+    if (!modbusClient || !modbusClient.connected()) {
+        modbusClient = modbusTcpServer.available();
+    }
+
+    if (modbusClient && modbusClient.connected() && modbusClient.available()) {
+        // Read the Modbus TCP header (7 bytes)
+        uint8_t mbapHeader[7];
+        if (modbusClient.readBytes(mbapHeader, 7) != 7) {
+        return; // Wait for full header
+        }
+
+        // Extract PDU length
+        uint16_t pduLength = (mbapHeader[4] << 8) | mbapHeader[5];
+
+        // Read the PDU
+        uint8_t pdu[pduLength];
+        if (modbusClient.readBytes(pdu, pduLength) != pduLength) {
+        return; // Wait for full PDU
+        }
+
+        // Now process the request:
+        // You need to dispatch pdu[0] (Function Code), pdu[1..] to your Modbus handler
+        // and build a response to send back.
+
+        // Placeholder: echo reply for testing
+        modbusClient.write(mbapHeader, 7);
+        modbusClient.write(pdu, pduLength);
+    }
+    #endif
 
     if ((now - ButtonTimer) > BUTTON_TIMER)
     {
