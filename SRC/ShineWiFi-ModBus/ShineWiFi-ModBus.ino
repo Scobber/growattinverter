@@ -86,8 +86,9 @@ WiFiClient modbusClient;
 #define INPUT_REGISTER_CACHE_SIZE 1200
 #define HOLDING_REGISTER_CACHE_SIZE 200
 uint16_t inputRegisterCache[INPUT_REGISTER_CACHE_SIZE];
+#define MODBUS_PDU_MAX 253
 uint16_t holdingRegisterCache[HOLDING_REGISTER_CACHE_SIZE];
-#endif
+
 #endif
 
 #include "Growatt.h"
@@ -272,10 +273,11 @@ void handleModbusTcp()
         return;
 
     uint16_t pduLen = ((uint16_t)mbap[4] << 8) | mbap[5];
-    if (pduLen < 2)
+    if (pduLen < 2 || pduLen > MODBUS_PDU_MAX)
         return;
 
-    uint8_t pdu[pduLen];
+    uint8_t pdu[MODBUS_PDU_MAX];
+
     if (modbusClient.readBytes(pdu, pduLen) != pduLen)
         return;
 
