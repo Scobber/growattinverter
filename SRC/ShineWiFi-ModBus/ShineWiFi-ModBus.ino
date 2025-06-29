@@ -110,6 +110,7 @@ bool StartedConfigAfterBoot = false;
 #include <Pinger.h>
 #include <PingerResponse.h>
 #endif
+#include <time.h>
 
 #define LED_GN 0  // GPIO0
 #define LED_RT 2  // GPIO2
@@ -553,6 +554,14 @@ void setup()
     while (WiFi.status() != WL_CONNECTED)
     {
         WiFi_Reconnect();
+    }
+
+    // Initialize time via NTP for proper timestamp generation
+    configTime(0, 0, "pool.ntp.org");
+    time_t now = time(nullptr);
+    for (uint8_t i = 0; i < 10 && now < 100000; i++) {
+        delay(500);
+        now = time(nullptr);
     }
 
     #if MQTT_SUPPORTED == 1

@@ -8,6 +8,7 @@
 #ifndef __CONFIG_H__
 #error Please rename Config.h.example to Config.h
 #endif
+#include <time.h>
 
 #if GROWATT_MODBUS_VERSION == 120
   #include "Growatt120.h"
@@ -385,7 +386,13 @@ void Growatt::CreateFroniusJson(char *Buffer) {
   status["Code"] = 0;
   status["Reason"] = "";
   status["UserMessage"] = "";
-  head["Timestamp"] = (uint32_t)millis() / 1000;
+  time_t now = time(nullptr);
+  struct tm *tm_info = localtime(&now);
+  char ts[30];
+  snprintf(ts, sizeof(ts), "%04d-%02d-%02dT%02d:%02d:%02d+00:00",
+           tm_info->tm_year + 1900, tm_info->tm_mon + 1, tm_info->tm_mday,
+           tm_info->tm_hour, tm_info->tm_min, tm_info->tm_sec);
+  head["Timestamp"] = ts;
 
   JsonObject body = doc.createNestedObject("Body");
   JsonObject data = body.createNestedObject("Data");
