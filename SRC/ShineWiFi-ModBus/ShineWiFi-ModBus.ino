@@ -585,6 +585,7 @@ void setup()
     httpServer.on("/status", SendJsonSite);
     httpServer.on("/uistatus", SendUiJsonSite);
     httpServer.on("/solar_api/v1/GetInverterRealtimeData.cgi", SendFroniusSite);
+    httpServer.on("/solar_api/v1/GetDeviceInfo.cgi", SendDeviceInfoSite);
     httpServer.on("/StartAp", StartConfigAccessPoint);
     httpServer.on("/postCommunicationModbus", SendPostSite);
     httpServer.on("/postCommunicationModbus_p", HTTP_POST, handlePostData);
@@ -618,6 +619,13 @@ void SendFroniusSite(void)
 {
     JsonString[0] = '\0';
     Inverter.CreateFroniusJson(JsonString);
+    httpServer.send(200, "application/json", JsonString);
+}
+
+void SendDeviceInfoSite(void)
+{
+    JsonString[0] = '\0';
+    Inverter.CreateDeviceInfoJson(JsonString);
     httpServer.send(200, "application/json", JsonString);
 }
 
