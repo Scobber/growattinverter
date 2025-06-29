@@ -325,8 +325,8 @@ void Growatt::CreateDeviceInfoJson(char *Buffer) {
 
   JsonObject body = doc.createNestedObject("Body");
   JsonObject data = body.createNestedObject("Data");
-  data["DeviceType"] = 122;
-  data["Serial"] = "GW-GROWATT-EMU";
+  data["DeviceType"] = FRONIUS_DEVICE_TYPE;
+  data["Serial"] = FRONIUS_SERIAL;
 
   serializeJson(doc, Buffer, MQTT_MAX_PACKET_SIZE);
 }
@@ -483,6 +483,59 @@ void Growatt::CreateFroniusJson(char *Buffer) {
   JsonObject totObj = data.createNestedObject("TOTAL_ENERGY");
   totObj["Value"] = totE;
   totObj["Unit"] = "Wh";
+
+  serializeJson(doc, Buffer, MQTT_MAX_PACKET_SIZE);
+}
+
+void Growatt::CreatePowerFlowJson(char *Buffer) {
+  StaticJsonDocument<2048> doc;
+
+  JsonObject head = doc.createNestedObject("Head");
+  head.createNestedObject("RequestArguments");
+  JsonObject status = head.createNestedObject("Status");
+  status["Code"] = 0;
+  status["Reason"] = "";
+  status["UserMessage"] = "";
+  time_t now = time(nullptr);
+  struct tm *tm_info = localtime(&now);
+  char ts[30];
+  snprintf(ts, sizeof(ts), "%04d-%02d-%02dT%02d:%02d:%02d+00:00",
+           tm_info->tm_year + 1900, tm_info->tm_mon + 1, tm_info->tm_mday,
+           tm_info->tm_hour, tm_info->tm_min, tm_info->tm_sec);
+  head["Timestamp"] = ts;
+
+  JsonObject body = doc.createNestedObject("Body");
+  JsonObject data = body.createNestedObject("Data");
+  JsonObject site = data.createNestedObject("Site");
+
+#if GROWATT_MODBUS_VERSION == 305
+  double pac = _Protocol.InputRegisters[P305_AC_POWER].value * _Protocol.InputRegisters[P305_AC_POWER].multiplier;
+  double pdc = _Protocol.InputRegisters[P305_DC_POWER].value * _Protocol.InputRegisters[P305_DC_POWER].multiplier;
+  double dayE = _Protocol.InputRegisters[P305_ENERGY_TODAY].value * _Protocol.InputRegisters[P305_ENERGY_TODAY].multiplier * 1000.0;
+  double totE = _Protocol.InputRegisters[P305_ENERGY_TOTAL].value * _Protocol.InputRegisters[P305_ENERGY_TOTAL].multiplier * 1000.0;
+#elif GROWATT_MODBUS_VERSION == 120
+  double pac = _Protocol.InputRegisters[P120_OUTPUT_POWER].value * _Protocol.InputRegisters[P120_OUTPUT_POWER].multiplier;
+  double pdc = _Protocol.InputRegisters[P120_INPUT_POWER].value * _Protocol.InputRegisters[P120_INPUT_POWER].multiplier;
+  double dayE = _Protocol.InputRegisters[P120_ENERGY_TODAY].value * _Protocol.InputRegisters[P120_ENERGY_TODAY].multiplier * 1000.0;
+  double totE = _Protocol.InputRegisters[P120_ENERGY_TOTAL].value * _Protocol.InputRegisters[P120_ENERGY_TOTAL].multiplier * 1000.0;
+#elif GROWATT_MODBUS_VERSION == 124
+  double pac = _Protocol.InputRegisters[P124_PAC].value * _Protocol.InputRegisters[P124_PAC].multiplier;
+  double pdc = _Protocol.InputRegisters[P124_INPUT_POWER].value * _Protocol.InputRegisters[P124_INPUT_POWER].multiplier;
+  double dayE = _Protocol.InputRegisters[P124_EAC_TODAY].value * _Protocol.InputRegisters[P124_EAC_TODAY].multiplier * 1000.0;
+  double totE = _Protocol.InputRegisters[P124_EAC_TOTAL].value * _Protocol.InputRegisters[P124_EAC_TOTAL].multiplier * 1000.0;
+#else
+  double pac = 0, pdc = 0, dayE = 0, totE = 0;
+#endif
+
+  site["P_PV"] = pdc;
+  site["P_Load"] = pac;
+  site["E_DAY"] = dayE;
+  site["E_TOTAL"] = totE;
+
+  JsonObject invs = data.createNestedObject("Inverters");
+  JsonObject inv = invs.createNestedObject("1");
+  inv["DT"] = FRONIUS_DEVICE_TYPE;
+  inv["P"] = pac;
 
   serializeJson(doc, Buffer, MQTT_MAX_PACKET_SIZE);
 }

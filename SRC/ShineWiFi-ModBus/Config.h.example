@@ -19,6 +19,10 @@
 #define MQTT_MAX_PACKET_SIZE 2048
 #endif
 
+// Fronius emulation settings
+#define FRONIUS_DEVICE_TYPE 122
+#define FRONIUS_SERIAL "GW-GROWATT-EMU"
+
 // Setting this define to 1 will ping the default gateway periodically
 // if the ping is not successful, the wifi connection will be reestablished
 #define PINGER_SUPPORTED 0

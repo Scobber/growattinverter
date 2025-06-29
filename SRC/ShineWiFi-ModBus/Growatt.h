@@ -25,6 +25,7 @@ class Growatt {
     void CreateJson(char *Buffer, const char *MacAddress);
     void CreateUIJson(char *Buffer);
     void CreateFroniusJson(char *Buffer);
+    void CreatePowerFlowJson(char *Buffer);
     void CreateDeviceInfoJson(char *Buffer);
   private:
     eDevice_t _eDevice;
