@@ -1,5 +1,6 @@
 #include <ModbusMaster.h>
 #include <ArduinoJson.h>
+#include <Arduino.h>
 
 #include "GrowattTypes.h"
 #include "Growatt.h"
@@ -370,4 +371,88 @@ void Growatt::CreateUIJson(char *Buffer) {
 #endif // SIMULATE_INVERTER
 
   serializeJson(doc, Buffer, 4096);
+}
+
+void Growatt::CreateFroniusJson(char *Buffer) {
+  StaticJsonDocument<2048> doc;
+
+  JsonObject head = doc.createNestedObject("Head");
+  JsonObject req = head.createNestedObject("RequestArguments");
+  req["DeviceId"] = 1;
+  req["Scope"] = "Device";
+  req["DataCollection"] = "CommonInverterData";
+  JsonObject status = head.createNestedObject("Status");
+  status["Code"] = 0;
+  status["Reason"] = "";
+  status["UserMessage"] = "";
+  head["Timestamp"] = (uint32_t)millis() / 1000;
+
+  JsonObject body = doc.createNestedObject("Body");
+  JsonObject data = body.createNestedObject("Data");
+
+#if GROWATT_MODBUS_VERSION == 305
+  double pac  = _Protocol.InputRegisters[P305_AC_POWER].value * _Protocol.InputRegisters[P305_AC_POWER].multiplier;
+  double fac  = _Protocol.InputRegisters[P305_AC_FREQUENCY].value * _Protocol.InputRegisters[P305_AC_FREQUENCY].multiplier;
+  double uac  = _Protocol.InputRegisters[P305_AC_VOLTAGE].value * _Protocol.InputRegisters[P305_AC_VOLTAGE].multiplier;
+  double iac  = _Protocol.InputRegisters[P305_AC_OUTPUT_CURRENT].value * _Protocol.InputRegisters[P305_AC_OUTPUT_CURRENT].multiplier;
+  double pdc  = _Protocol.InputRegisters[P305_DC_POWER].value * _Protocol.InputRegisters[P305_DC_POWER].multiplier;
+  double udc  = _Protocol.InputRegisters[P305_DC_VOLTAGE].value * _Protocol.InputRegisters[P305_DC_VOLTAGE].multiplier;
+  double idc  = _Protocol.InputRegisters[P305_DC_INPUT_CURRENT].value * _Protocol.InputRegisters[P305_DC_INPUT_CURRENT].multiplier;
+  double dayE = _Protocol.InputRegisters[P305_ENERGY_TODAY].value * _Protocol.InputRegisters[P305_ENERGY_TODAY].multiplier * 1000.0;
+  double totE = _Protocol.InputRegisters[P305_ENERGY_TOTAL].value * _Protocol.InputRegisters[P305_ENERGY_TOTAL].multiplier * 1000.0;
+#elif GROWATT_MODBUS_VERSION == 120
+  double pac  = _Protocol.InputRegisters[P120_OUTPUT_POWER].value * _Protocol.InputRegisters[P120_OUTPUT_POWER].multiplier;
+  double fac  = _Protocol.InputRegisters[P120_GRID_FREQUENCY].value * _Protocol.InputRegisters[P120_GRID_FREQUENCY].multiplier;
+  double uac  = _Protocol.InputRegisters[P120_GRID_L1_VOLTAGE].value * _Protocol.InputRegisters[P120_GRID_L1_VOLTAGE].multiplier;
+  double iac  = _Protocol.InputRegisters[P120_GRID_L1_OUTPUT_CURRENT].value * _Protocol.InputRegisters[P120_GRID_L1_OUTPUT_CURRENT].multiplier;
+  double pdc  = _Protocol.InputRegisters[P120_INPUT_POWER].value * _Protocol.InputRegisters[P120_INPUT_POWER].multiplier;
+  double udc  = _Protocol.InputRegisters[P120_PV1_VOLTAGE].value * _Protocol.InputRegisters[P120_PV1_VOLTAGE].multiplier;
+  double idc  = (_Protocol.InputRegisters[P120_PV1_INPUT_CURRENT].value * _Protocol.InputRegisters[P120_PV1_INPUT_CURRENT].multiplier) +
+                 (_Protocol.InputRegisters[P120_PV2_INPUT_CURRENT].value * _Protocol.InputRegisters[P120_PV2_INPUT_CURRENT].multiplier);
+  double dayE = _Protocol.InputRegisters[P120_ENERGY_TODAY].value * _Protocol.InputRegisters[P120_ENERGY_TODAY].multiplier * 1000.0;
+  double totE = _Protocol.InputRegisters[P120_ENERGY_TOTAL].value * _Protocol.InputRegisters[P120_ENERGY_TOTAL].multiplier * 1000.0;
+#elif GROWATT_MODBUS_VERSION == 124
+  double pac  = _Protocol.InputRegisters[P124_PAC].value * _Protocol.InputRegisters[P124_PAC].multiplier;
+  double fac  = _Protocol.InputRegisters[P124_FAC].value * _Protocol.InputRegisters[P124_FAC].multiplier;
+  double uac  = _Protocol.InputRegisters[P124_VAC1].value * _Protocol.InputRegisters[P124_VAC1].multiplier;
+  double iac  = _Protocol.InputRegisters[P124_IAC1].value * _Protocol.InputRegisters[P124_IAC1].multiplier;
+  double pdc  = _Protocol.InputRegisters[P124_INPUT_POWER].value * _Protocol.InputRegisters[P124_INPUT_POWER].multiplier;
+  double udc  = _Protocol.InputRegisters[P124_PV1_VOLTAGE].value * _Protocol.InputRegisters[P124_PV1_VOLTAGE].multiplier;
+  double idc  = (_Protocol.InputRegisters[P124_PV1_CURRENT].value * _Protocol.InputRegisters[P124_PV1_CURRENT].multiplier) +
+                 (_Protocol.InputRegisters[P124_PV2_CURRENT].value * _Protocol.InputRegisters[P124_PV2_CURRENT].multiplier);
+  double dayE = _Protocol.InputRegisters[P124_EAC_TODAY].value * _Protocol.InputRegisters[P124_EAC_TODAY].multiplier * 1000.0;
+  double totE = _Protocol.InputRegisters[P124_EAC_TOTAL].value * _Protocol.InputRegisters[P124_EAC_TOTAL].multiplier * 1000.0;
+#else
+  double pac = 0, fac = 0, uac = 0, iac = 0, pdc = 0, udc = 0, idc = 0, dayE = 0, totE = 0;
+#endif
+
+  JsonObject pacObj = data.createNestedObject("PAC");
+  pacObj["Value"] = pac;
+  pacObj["Unit"] = "W";
+  JsonObject pdcObj = data.createNestedObject("PDC");
+  pdcObj["Value"] = pdc;
+  pdcObj["Unit"] = "W";
+  JsonObject facObj = data.createNestedObject("FAC");
+  facObj["Value"] = fac;
+  facObj["Unit"] = "Hz";
+  JsonObject uacObj = data.createNestedObject("UAC");
+  uacObj["Value"] = uac;
+  uacObj["Unit"] = "V";
+  JsonObject iacObj = data.createNestedObject("IAC");
+  iacObj["Value"] = iac;
+  iacObj["Unit"] = "A";
+  JsonObject udcObj = data.createNestedObject("UDC");
+  udcObj["Value"] = udc;
+  udcObj["Unit"] = "V";
+  JsonObject idcObj = data.createNestedObject("IDC");
+  idcObj["Value"] = idc;
+  idcObj["Unit"] = "A";
+  JsonObject dayObj = data.createNestedObject("DAY_ENERGY");
+  dayObj["Value"] = dayE;
+  dayObj["Unit"] = "Wh";
+  JsonObject totObj = data.createNestedObject("TOTAL_ENERGY");
+  totObj["Value"] = totE;
+  totObj["Unit"] = "Wh";
+
+  serializeJson(doc, Buffer, MQTT_MAX_PACKET_SIZE);
 }

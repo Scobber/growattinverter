@@ -24,6 +24,7 @@ class Growatt {
     bool WriteHoldingReg(uint16_t adr, uint16_t value);
     void CreateJson(char *Buffer, const char *MacAddress);
     void CreateUIJson(char *Buffer);
+    void CreateFroniusJson(char *Buffer);
   private:
     eDevice_t _eDevice;
     bool _GotData;
