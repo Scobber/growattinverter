@@ -308,6 +308,29 @@ void Growatt::CreateJson(char *Buffer, const char *MacAddress) {
   serializeJson(doc, Buffer, MQTT_MAX_PACKET_SIZE);
 }
 
+void Growatt::CreateDeviceInfoJson(char *Buffer) {
+  StaticJsonDocument<512> doc;
+
+  JsonObject head = doc.createNestedObject("Head");
+  head.createNestedObject("RequestArguments");
+  JsonObject status = head.createNestedObject("Status");
+  status["Code"] = 0;
+  time_t now = time(nullptr);
+  struct tm *tm_info = localtime(&now);
+  char ts[30];
+  snprintf(ts, sizeof(ts), "%04d-%02d-%02dT%02d:%02d:%02d+00:00",
+           tm_info->tm_year + 1900, tm_info->tm_mon + 1, tm_info->tm_mday,
+           tm_info->tm_hour, tm_info->tm_min, tm_info->tm_sec);
+  head["Timestamp"] = ts;
+
+  JsonObject body = doc.createNestedObject("Body");
+  JsonObject data = body.createNestedObject("Data");
+  data["DeviceType"] = 122;
+  data["Serial"] = "GW-GROWATT-EMU";
+
+  serializeJson(doc, Buffer, MQTT_MAX_PACKET_SIZE);
+}
+
 void Growatt::CreateUIJson(char *Buffer) {
   StaticJsonDocument<2048> doc;
   const char* unitStr[] = {"", "W", "kWh", "V", "A", "s", "%", "Hz", "C"};
