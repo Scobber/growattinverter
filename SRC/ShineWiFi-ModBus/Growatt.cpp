@@ -516,6 +516,17 @@ void Growatt::CreateFroniusJson(char *Buffer) {
     totE_l3 = totE * pac_l3 / sumPac;
   }
 
+#if GROWATT_MODBUS_VERSION == 305
+  uint32_t gwStatus = _Protocol.InputRegisters[P305_I_STATUS].value;
+#elif GROWATT_MODBUS_VERSION == 120
+  uint32_t gwStatus = _Protocol.InputRegisters[P120_I_STATUS].value;
+#elif GROWATT_MODBUS_VERSION == 124
+  uint32_t gwStatus = _Protocol.InputRegisters[P124_I_STATUS].value;
+#else
+  uint32_t gwStatus = 0;
+#endif
+  uint8_t froniusStatus = MapStatusToFronius(gwStatus);
+
   JsonObject pacObj = data.createNestedObject("PAC");
   pacObj["Value"] = pac;
   pacObj["Unit"] = "W";
