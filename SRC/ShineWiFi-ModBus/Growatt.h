@@ -30,6 +30,7 @@ class Growatt {
     void CreateInverterInfoJson(char *Buffer);
     void CreateLoggerInfoJson(char *Buffer);
     void CreateActiveDeviceInfoJson(char *Buffer);
+    static uint8_t MapStatusToFronius(uint32_t status);
   private:
     eDevice_t _eDevice;
     bool _GotData;
