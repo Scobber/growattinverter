@@ -23,6 +23,9 @@ Implemented Features:
 * It supports convenient OTA firmware update (`http://<ip>/firmware`)
 * It supports basic access to arbitrary modbus data
 * It tries to autodected which protocol version to use
+* Provides a small subset of the Fronius Solar API to ease integration:
+  `/solar_api/v1/GetInverterInfo.cgi`, `/solar_api/v1/GetPowerFlowRealtimeData.fcgi`,
+  `/solar_api/v1/GetLoggerInfo.cgi`, and `/solar_api/v1/GetActiveDeviceInfo.cgi`
 * Wifi manager with own access point for initial configuration of Wifi and MQTT server (IP: 192.168.4.1, SSID: GrowattConfig, Pass: growsolar)
 * Currently Growatt v1.24 and 3.05 protocols are implemented and can be easily extended/changed to fit anyone's needs
 

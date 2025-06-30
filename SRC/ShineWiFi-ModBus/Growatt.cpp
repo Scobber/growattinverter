@@ -539,3 +539,95 @@ void Growatt::CreatePowerFlowJson(char *Buffer) {
 
   serializeJson(doc, Buffer, MQTT_MAX_PACKET_SIZE);
 }
+
+void Growatt::CreateInverterInfoJson(char *Buffer) {
+  StaticJsonDocument<512> doc;
+
+  JsonObject head = doc.createNestedObject("Head");
+  head.createNestedObject("RequestArguments");
+  JsonObject status = head.createNestedObject("Status");
+  status["Code"] = 0;
+  status["Reason"] = "";
+  status["UserMessage"] = "";
+  time_t now = time(nullptr);
+  struct tm *tm_info = localtime(&now);
+  char ts[30];
+  snprintf(ts, sizeof(ts), "%04d-%02d-%02dT%02d:%02d:%02d+00:00",
+           tm_info->tm_year + 1900, tm_info->tm_mon + 1, tm_info->tm_mday,
+           tm_info->tm_hour, tm_info->tm_min, tm_info->tm_sec);
+  head["Timestamp"] = ts;
+
+  JsonObject body = doc.createNestedObject("Body");
+  JsonObject data = body.createNestedObject("Data");
+  JsonObject inv = data.createNestedObject("1");
+
+#if GROWATT_MODBUS_VERSION == 305
+  double pdc = _Protocol.InputRegisters[P305_DC_POWER].value * _Protocol.InputRegisters[P305_DC_POWER].multiplier * 1000.0;
+#elif GROWATT_MODBUS_VERSION == 120
+  double pdc = _Protocol.InputRegisters[P120_INPUT_POWER].value * _Protocol.InputRegisters[P120_INPUT_POWER].multiplier * 1000.0;
+#elif GROWATT_MODBUS_VERSION == 124
+  double pdc = _Protocol.InputRegisters[P124_INPUT_POWER].value * _Protocol.InputRegisters[P124_INPUT_POWER].multiplier * 1000.0;
+#else
+  double pdc = 0;
+#endif
+
+  inv["CustomName"] = "Growatt Inverter";
+  inv["DT"] = FRONIUS_DEVICE_TYPE;
+  inv["ErrorCode"] = 0;
+  inv["PVPower"] = (uint32_t)pdc;
+  inv["Show"] = 1;
+  inv["StatusCode"] = 7;
+  inv["UniqueID"] = FRONIUS_SERIAL;
+
+  serializeJson(doc, Buffer, MQTT_MAX_PACKET_SIZE);
+}
+
+void Growatt::CreateLoggerInfoJson(char *Buffer) {
+  StaticJsonDocument<512> doc;
+
+  JsonObject head = doc.createNestedObject("Head");
+  head.createNestedObject("RequestArguments");
+  JsonObject status = head.createNestedObject("Status");
+  status["Code"] = 0;
+  status["Reason"] = "";
+  status["UserMessage"] = "";
+  time_t now = time(nullptr);
+  struct tm *tm_info = localtime(&now);
+  char ts[30];
+  snprintf(ts, sizeof(ts), "%04d-%02d-%02dT%02d:%02d:%02d+00:00",
+           tm_info->tm_year + 1900, tm_info->tm_mon + 1, tm_info->tm_mday,
+           tm_info->tm_hour, tm_info->tm_min, tm_info->tm_sec);
+  head["Timestamp"] = ts;
+
+  JsonObject body = doc.createNestedObject("Body");
+  JsonObject data = body.createNestedObject("LoggerInfo");
+  data["SWVersion"] = "1.0";
+  data["HWVersion"] = "1.0";
+  data["TimezoneLocation"] = "UTC";
+
+  serializeJson(doc, Buffer, MQTT_MAX_PACKET_SIZE);
+}
+
+void Growatt::CreateActiveDeviceInfoJson(char *Buffer) {
+  StaticJsonDocument<256> doc;
+
+  JsonObject head = doc.createNestedObject("Head");
+  JsonObject args = head.createNestedObject("RequestArguments");
+  args["DeviceClass"] = "SensorCard";
+  JsonObject status = head.createNestedObject("Status");
+  status["Code"] = 0;
+  status["Reason"] = "";
+  status["UserMessage"] = "";
+  time_t now = time(nullptr);
+  struct tm *tm_info = localtime(&now);
+  char ts[30];
+  snprintf(ts, sizeof(ts), "%04d-%02d-%02dT%02d:%02d:%02d+00:00",
+           tm_info->tm_year + 1900, tm_info->tm_mon + 1, tm_info->tm_mday,
+           tm_info->tm_hour, tm_info->tm_min, tm_info->tm_sec);
+  head["Timestamp"] = ts;
+
+  JsonObject body = doc.createNestedObject("Body");
+  body.createNestedObject("Data");
+
+  serializeJson(doc, Buffer, MQTT_MAX_PACKET_SIZE);
+}
