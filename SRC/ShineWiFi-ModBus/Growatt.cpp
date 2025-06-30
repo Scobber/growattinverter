@@ -430,6 +430,9 @@ void Growatt::CreateFroniusJson(char *Buffer) {
   double idc  = _Protocol.InputRegisters[P305_DC_INPUT_CURRENT].value * _Protocol.InputRegisters[P305_DC_INPUT_CURRENT].multiplier;
   double dayE = _Protocol.InputRegisters[P305_ENERGY_TODAY].value * _Protocol.InputRegisters[P305_ENERGY_TODAY].multiplier * 1000.0;
   double totE = _Protocol.InputRegisters[P305_ENERGY_TOTAL].value * _Protocol.InputRegisters[P305_ENERGY_TOTAL].multiplier * 1000.0;
+  double uac_l1 = uac, uac_l2 = 0, uac_l3 = 0;
+  double iac_l1 = iac, iac_l2 = 0, iac_l3 = 0;
+  double pac_l1 = pac, pac_l2 = 0, pac_l3 = 0;
 #elif GROWATT_MODBUS_VERSION == 120
   double pac  = _Protocol.InputRegisters[P120_OUTPUT_POWER].value * _Protocol.InputRegisters[P120_OUTPUT_POWER].multiplier;
   double fac  = _Protocol.InputRegisters[P120_GRID_FREQUENCY].value * _Protocol.InputRegisters[P120_GRID_FREQUENCY].multiplier;
@@ -441,6 +444,15 @@ void Growatt::CreateFroniusJson(char *Buffer) {
                  (_Protocol.InputRegisters[P120_PV2_INPUT_CURRENT].value * _Protocol.InputRegisters[P120_PV2_INPUT_CURRENT].multiplier);
   double dayE = _Protocol.InputRegisters[P120_ENERGY_TODAY].value * _Protocol.InputRegisters[P120_ENERGY_TODAY].multiplier * 1000.0;
   double totE = _Protocol.InputRegisters[P120_ENERGY_TOTAL].value * _Protocol.InputRegisters[P120_ENERGY_TOTAL].multiplier * 1000.0;
+  double uac_l1 = _Protocol.InputRegisters[P120_GRID_L1_VOLTAGE].value * _Protocol.InputRegisters[P120_GRID_L1_VOLTAGE].multiplier;
+  double uac_l2 = _Protocol.InputRegisters[P120_GRID_L2_VOLTAGE].value * _Protocol.InputRegisters[P120_GRID_L2_VOLTAGE].multiplier;
+  double uac_l3 = _Protocol.InputRegisters[P120_GRID_L3_VOLTAGE].value * _Protocol.InputRegisters[P120_GRID_L3_VOLTAGE].multiplier;
+  double iac_l1 = _Protocol.InputRegisters[P120_GRID_L1_OUTPUT_CURRENT].value * _Protocol.InputRegisters[P120_GRID_L1_OUTPUT_CURRENT].multiplier;
+  double iac_l2 = _Protocol.InputRegisters[P120_GRID_L2_OUTPUT_CURRENT].value * _Protocol.InputRegisters[P120_GRID_L2_OUTPUT_CURRENT].multiplier;
+  double iac_l3 = _Protocol.InputRegisters[P120_GRID_L3_OUTPUT_CURRENT].value * _Protocol.InputRegisters[P120_GRID_L3_OUTPUT_CURRENT].multiplier;
+  double pac_l1 = _Protocol.InputRegisters[P120_GRID_L1_OUTPUT_POWER].value * _Protocol.InputRegisters[P120_GRID_L1_OUTPUT_POWER].multiplier;
+  double pac_l2 = _Protocol.InputRegisters[P120_GRID_L2_OUTPUT_POWER].value * _Protocol.InputRegisters[P120_GRID_L2_OUTPUT_POWER].multiplier;
+  double pac_l3 = _Protocol.InputRegisters[P120_GRID_L3_OUTPUT_POWER].value * _Protocol.InputRegisters[P120_GRID_L3_OUTPUT_POWER].multiplier;
 #elif GROWATT_MODBUS_VERSION == 124
   double pac  = _Protocol.InputRegisters[P124_PAC].value * _Protocol.InputRegisters[P124_PAC].multiplier;
   double fac  = _Protocol.InputRegisters[P124_FAC].value * _Protocol.InputRegisters[P124_FAC].multiplier;
@@ -452,8 +464,20 @@ void Growatt::CreateFroniusJson(char *Buffer) {
                  (_Protocol.InputRegisters[P124_PV2_CURRENT].value * _Protocol.InputRegisters[P124_PV2_CURRENT].multiplier);
   double dayE = _Protocol.InputRegisters[P124_EAC_TODAY].value * _Protocol.InputRegisters[P124_EAC_TODAY].multiplier * 1000.0;
   double totE = _Protocol.InputRegisters[P124_EAC_TOTAL].value * _Protocol.InputRegisters[P124_EAC_TOTAL].multiplier * 1000.0;
+  double uac_l1 = _Protocol.InputRegisters[P124_VAC1].value * _Protocol.InputRegisters[P124_VAC1].multiplier;
+  double uac_l2 = _Protocol.InputRegisters[P124_VAC2].value * _Protocol.InputRegisters[P124_VAC2].multiplier;
+  double uac_l3 = _Protocol.InputRegisters[P124_VAC3].value * _Protocol.InputRegisters[P124_VAC3].multiplier;
+  double iac_l1 = _Protocol.InputRegisters[P124_IAC1].value * _Protocol.InputRegisters[P124_IAC1].multiplier;
+  double iac_l2 = _Protocol.InputRegisters[P124_IAC2].value * _Protocol.InputRegisters[P124_IAC2].multiplier;
+  double iac_l3 = _Protocol.InputRegisters[P124_IAC3].value * _Protocol.InputRegisters[P124_IAC3].multiplier;
+  double pac_l1 = _Protocol.InputRegisters[P124_PAC1].value * _Protocol.InputRegisters[P124_PAC1].multiplier;
+  double pac_l2 = _Protocol.InputRegisters[P124_PAC2].value * _Protocol.InputRegisters[P124_PAC2].multiplier;
+  double pac_l3 = _Protocol.InputRegisters[P124_PAC3].value * _Protocol.InputRegisters[P124_PAC3].multiplier;
 #else
   double pac = 0, fac = 0, uac = 0, iac = 0, pdc = 0, udc = 0, idc = 0, dayE = 0, totE = 0;
+  double uac_l1 = 0, uac_l2 = 0, uac_l3 = 0;
+  double iac_l1 = 0, iac_l2 = 0, iac_l3 = 0;
+  double pac_l1 = 0, pac_l2 = 0, pac_l3 = 0;
 #endif
 
   JsonObject pacObj = data.createNestedObject("PAC");
@@ -471,6 +495,33 @@ void Growatt::CreateFroniusJson(char *Buffer) {
   JsonObject iacObj = data.createNestedObject("IAC");
   iacObj["Value"] = iac;
   iacObj["Unit"] = "A";
+  JsonObject uacL1Obj = data.createNestedObject("UAC_L1");
+  uacL1Obj["Value"] = uac_l1;
+  uacL1Obj["Unit"] = "V";
+  JsonObject uacL2Obj = data.createNestedObject("UAC_L2");
+  uacL2Obj["Value"] = uac_l2;
+  uacL2Obj["Unit"] = "V";
+  JsonObject uacL3Obj = data.createNestedObject("UAC_L3");
+  uacL3Obj["Value"] = uac_l3;
+  uacL3Obj["Unit"] = "V";
+  JsonObject iacL1Obj = data.createNestedObject("IAC_L1");
+  iacL1Obj["Value"] = iac_l1;
+  iacL1Obj["Unit"] = "A";
+  JsonObject iacL2Obj = data.createNestedObject("IAC_L2");
+  iacL2Obj["Value"] = iac_l2;
+  iacL2Obj["Unit"] = "A";
+  JsonObject iacL3Obj = data.createNestedObject("IAC_L3");
+  iacL3Obj["Value"] = iac_l3;
+  iacL3Obj["Unit"] = "A";
+  JsonObject pacL1Obj = data.createNestedObject("PAC_L1");
+  pacL1Obj["Value"] = pac_l1;
+  pacL1Obj["Unit"] = "W";
+  JsonObject pacL2Obj = data.createNestedObject("PAC_L2");
+  pacL2Obj["Value"] = pac_l2;
+  pacL2Obj["Unit"] = "W";
+  JsonObject pacL3Obj = data.createNestedObject("PAC_L3");
+  pacL3Obj["Value"] = pac_l3;
+  pacL3Obj["Unit"] = "W";
   JsonObject udcObj = data.createNestedObject("UDC");
   udcObj["Value"] = udc;
   udcObj["Unit"] = "V";

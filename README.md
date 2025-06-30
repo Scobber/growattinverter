@@ -26,6 +26,7 @@ Implemented Features:
 * Provides a small subset of the Fronius Solar API to ease integration:
   `/solar_api/v1/GetInverterInfo.cgi`, `/solar_api/v1/GetPowerFlowRealtimeData.fcgi`,
   `/solar_api/v1/GetLoggerInfo.cgi`, and `/solar_api/v1/GetActiveDeviceInfo.cgi`
+* AC phase statistics (L1-L3) are exposed through the Fronius API endpoints
 * Wifi manager with own access point for initial configuration of Wifi and MQTT server (IP: 192.168.4.1, SSID: GrowattConfig, Pass: growsolar)
 * Currently Growatt v1.24 and 3.05 protocols are implemented and can be easily extended/changed to fit anyone's needs
 
