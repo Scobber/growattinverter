@@ -587,6 +587,9 @@ void setup()
     httpServer.on("/solar_api/v1/GetInverterRealtimeData.cgi", SendFroniusSite);
     httpServer.on("/solar_api/v1/GetPowerFlowRealtimeData.fcgi", SendPowerFlowSite);
     httpServer.on("/solar_api/v1/GetDeviceInfo.cgi", SendDeviceInfoSite);
+    httpServer.on("/solar_api/v1/GetInverterInfo.cgi", SendInverterInfoSite);
+    httpServer.on("/solar_api/v1/GetLoggerInfo.cgi", SendLoggerInfoSite);
+    httpServer.on("/solar_api/v1/GetActiveDeviceInfo.cgi", SendActiveDeviceInfoSite);
     httpServer.on("/StartAp", StartConfigAccessPoint);
     httpServer.on("/postCommunicationModbus", SendPostSite);
     httpServer.on("/postCommunicationModbus_p", HTTP_POST, handlePostData);
@@ -634,6 +637,27 @@ void SendDeviceInfoSite(void)
 {
     JsonString[0] = '\0';
     Inverter.CreateDeviceInfoJson(JsonString);
+    httpServer.send(200, "application/json", JsonString);
+}
+
+void SendInverterInfoSite(void)
+{
+    JsonString[0] = '\0';
+    Inverter.CreateInverterInfoJson(JsonString);
+    httpServer.send(200, "application/json", JsonString);
+}
+
+void SendLoggerInfoSite(void)
+{
+    JsonString[0] = '\0';
+    Inverter.CreateLoggerInfoJson(JsonString);
+    httpServer.send(200, "application/json", JsonString);
+}
+
+void SendActiveDeviceInfoSite(void)
+{
+    JsonString[0] = '\0';
+    Inverter.CreateActiveDeviceInfoJson(JsonString);
     httpServer.send(200, "application/json", JsonString);
 }
 

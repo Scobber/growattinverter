@@ -27,6 +27,9 @@ class Growatt {
     void CreateFroniusJson(char *Buffer);
     void CreatePowerFlowJson(char *Buffer);
     void CreateDeviceInfoJson(char *Buffer);
+    void CreateInverterInfoJson(char *Buffer);
+    void CreateLoggerInfoJson(char *Buffer);
+    void CreateActiveDeviceInfoJson(char *Buffer);
   private:
     eDevice_t _eDevice;
     bool _GotData;

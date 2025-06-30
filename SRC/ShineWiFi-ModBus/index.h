@@ -35,7 +35,10 @@ copies or substantial portions of the Software. -->
   <a href="./StartAp">Start config access point</a> -
   <a href="./postCommunicationModbus">RW Modbus</a> -
   <a href="./solar_api/v1/GetInverterRealtimeData.cgi">Fronius Inverter Data</a> -
+  <a href="./solar_api/v1/GetInverterInfo.cgi">Fronius Inverter Info</a> -
   <a href="./solar_api/v1/GetDeviceInfo.cgi">Fronius Device Info</a> -
+  <a href="./solar_api/v1/GetLoggerInfo.cgi">Fronius Logger Info</a> -
+  <a href="./solar_api/v1/GetActiveDeviceInfo.cgi">Fronius Active Device</a> -
   <a href="./solar_api/v1/GetPowerFlowRealtimeData.fcgi">Fronius Power Flow</a>
 
 </body>
