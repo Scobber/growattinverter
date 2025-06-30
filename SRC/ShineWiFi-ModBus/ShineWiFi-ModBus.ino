@@ -707,6 +707,24 @@ void SendPostSite(void)
         httpServer.sendContent("<tr><td>" + String(i) + "</td><td>" + String(holdingRegisterCache[i]) + "</td></tr>");
     }
     httpServer.sendContent("</table>");
+
+    httpServer.sendContent("<h3>Input Registers</h3><table border=\"1\"><tr><th>Name</th><th>Address</th><th>Value</th></tr>");
+    for (int i = 0; i < Inverter._Protocol.InputRegisterCount; i++)
+    {
+        httpServer.sendContent("<tr><td>" + String(Inverter._Protocol.InputRegisters[i].name) + "</td><td>" +
+                               String(Inverter._Protocol.InputRegisters[i].address) + "</td><td>" +
+                               String(Inverter._Protocol.InputRegisters[i].value) + "</td></tr>");
+    }
+    httpServer.sendContent("</table>");
+
+    httpServer.sendContent("<h3>Holding Registers</h3><table border=\"1\"><tr><th>Name</th><th>Address</th><th>Value</th></tr>");
+    for (int i = 0; i < Inverter._Protocol.HoldingRegisterCount; i++)
+    {
+        httpServer.sendContent("<tr><td>" + String(Inverter._Protocol.HoldingRegisters[i].name) + "</td><td>" +
+                               String(Inverter._Protocol.HoldingRegisters[i].address) + "</td><td>" +
+                               String(Inverter._Protocol.HoldingRegisters[i].value) + "</td></tr>");
+    }
+    httpServer.sendContent("</table>");
 }
 
 void handlePostData()
