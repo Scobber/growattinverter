@@ -26,6 +26,11 @@ ModbusMaster Modbus;
 Growatt::Growatt() {
   _eDevice = Undef_stick;
   _PacketCnt = 0;
+  _prevTotalEnergy = 0;
+  _prevEnergyValid = false;
+  _accEnergyL1 = 0;
+  _accEnergyL2 = 0;
+  _accEnergyL3 = 0;
 }
 
 void Growatt::InitProtocol() {
@@ -504,16 +509,27 @@ void Growatt::CreateFroniusJson(char *Buffer) {
   double pac_l1 = 0, pac_l2 = 0, pac_l3 = 0;
 #endif
 
+  // accumulate per phase energy based on total energy increments
+  double sumPacInstant = pac_l1 + pac_l2 + pac_l3;
+  if (_prevEnergyValid) {
+    double deltaE = totE - _prevTotalEnergy;
+    if (deltaE < 0) deltaE = 0;
+    if (sumPacInstant > 0) {
+      _accEnergyL1 += deltaE * pac_l1 / sumPacInstant;
+      _accEnergyL2 += deltaE * pac_l2 / sumPacInstant;
+      _accEnergyL3 += deltaE * pac_l3 / sumPacInstant;
+    }
+  }
+  _prevTotalEnergy = totE;
+  _prevEnergyValid = true;
+
   double dayE_l1 = 0, dayE_l2 = 0, dayE_l3 = 0;
-  double totE_l1 = 0, totE_l2 = 0, totE_l3 = 0;
+  double totE_l1 = _accEnergyL1, totE_l2 = _accEnergyL2, totE_l3 = _accEnergyL3;
   double sumPac = pac_l1 + pac_l2 + pac_l3;
   if (sumPac != 0) {
     dayE_l1 = dayE * pac_l1 / sumPac;
     dayE_l2 = dayE * pac_l2 / sumPac;
     dayE_l3 = dayE * pac_l3 / sumPac;
-    totE_l1 = totE * pac_l1 / sumPac;
-    totE_l2 = totE * pac_l2 / sumPac;
-    totE_l3 = totE * pac_l3 / sumPac;
   }
 
 #if GROWATT_MODBUS_VERSION == 305
