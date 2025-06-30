@@ -167,6 +167,9 @@ bool Growatt::ReadData() {
 
   _PacketCnt++;
   _GotData = ReadInputRegisters() && ReadHoldingRegisters();
+  if (_GotData) {
+    _UpdateEnergyAccumulation();
+  }
   return _GotData;
 }
 
@@ -271,6 +274,52 @@ bool Growatt::ReadInputReg(uint16_t adr, uint32_t* result) {
 
 double Growatt::_round2(double value) {
    return (int)(value * 100 + 0.5) / 100.0;
+}
+
+void Growatt::_UpdateEnergyAccumulation() {
+#if GROWATT_MODBUS_VERSION == 305
+  double totE = _Protocol.InputRegisters[P305_ENERGY_TOTAL].value *
+                _Protocol.InputRegisters[P305_ENERGY_TOTAL].multiplier * 1000.0;
+  double pac_l1 = _Protocol.InputRegisters[P305_AC_POWER].value *
+                  _Protocol.InputRegisters[P305_AC_POWER].multiplier;
+  double pac_l2 = 0;
+  double pac_l3 = 0;
+#elif GROWATT_MODBUS_VERSION == 120
+  double totE = _Protocol.InputRegisters[P120_ENERGY_TOTAL].value *
+                _Protocol.InputRegisters[P120_ENERGY_TOTAL].multiplier * 1000.0;
+  double pac_l1 = _Protocol.InputRegisters[P120_GRID_L1_OUTPUT_POWER].value *
+                  _Protocol.InputRegisters[P120_GRID_L1_OUTPUT_POWER].multiplier;
+  double pac_l2 = _Protocol.InputRegisters[P120_GRID_L2_OUTPUT_POWER].value *
+                  _Protocol.InputRegisters[P120_GRID_L2_OUTPUT_POWER].multiplier;
+  double pac_l3 = _Protocol.InputRegisters[P120_GRID_L3_OUTPUT_POWER].value *
+                  _Protocol.InputRegisters[P120_GRID_L3_OUTPUT_POWER].multiplier;
+#elif GROWATT_MODBUS_VERSION == 124
+  double totE = _Protocol.InputRegisters[P124_EAC_TOTAL].value *
+                _Protocol.InputRegisters[P124_EAC_TOTAL].multiplier * 1000.0;
+  double pac_l1 = _Protocol.InputRegisters[P124_PAC1].value *
+                  _Protocol.InputRegisters[P124_PAC1].multiplier;
+  double pac_l2 = _Protocol.InputRegisters[P124_PAC2].value *
+                  _Protocol.InputRegisters[P124_PAC2].multiplier;
+  double pac_l3 = _Protocol.InputRegisters[P124_PAC3].value *
+                  _Protocol.InputRegisters[P124_PAC3].multiplier;
+#else
+  double totE = 0;
+  double pac_l1 = 0, pac_l2 = 0, pac_l3 = 0;
+#endif
+
+  double sumPacInstant = pac_l1 + pac_l2 + pac_l3;
+  if (_prevEnergyValid) {
+    double deltaE = totE - _prevTotalEnergy;
+    if (deltaE < 0)
+      deltaE = 0;
+    if (sumPacInstant > 0) {
+      _accEnergyL1 += deltaE * pac_l1 / sumPacInstant;
+      _accEnergyL2 += deltaE * pac_l2 / sumPacInstant;
+      _accEnergyL3 += deltaE * pac_l3 / sumPacInstant;
+    }
+  }
+  _prevTotalEnergy = totE;
+  _prevEnergyValid = true;
 }
 
 uint8_t Growatt::MapStatusToFronius(uint32_t status) {
@@ -393,6 +442,127 @@ void Growatt::CreateUIJson(char *Buffer) {
       arr.add(_Protocol.HoldingRegisters[i].plot); //should be plotted
     }
   }
+
+  // compute additional aggregated statistics
+#if GROWATT_MODBUS_VERSION == 305
+  double uac_l1 = _Protocol.InputRegisters[P305_AC_VOLTAGE].value *
+                   _Protocol.InputRegisters[P305_AC_VOLTAGE].multiplier;
+  double uac_l2 = 0, uac_l3 = 0;
+  double iac_l1 = _Protocol.InputRegisters[P305_AC_OUTPUT_CURRENT].value *
+                   _Protocol.InputRegisters[P305_AC_OUTPUT_CURRENT].multiplier;
+  double iac_l2 = 0, iac_l3 = 0;
+  double pac_l1 = _Protocol.InputRegisters[P305_AC_POWER].value *
+                   _Protocol.InputRegisters[P305_AC_POWER].multiplier;
+  double pac_l2 = 0, pac_l3 = 0;
+  double dayE = _Protocol.InputRegisters[P305_ENERGY_TODAY].value *
+                _Protocol.InputRegisters[P305_ENERGY_TODAY].multiplier * 1000.0;
+#elif GROWATT_MODBUS_VERSION == 120
+  double uac_l1 = _Protocol.InputRegisters[P120_GRID_L1_VOLTAGE].value *
+                   _Protocol.InputRegisters[P120_GRID_L1_VOLTAGE].multiplier;
+  double uac_l2 = _Protocol.InputRegisters[P120_GRID_L2_VOLTAGE].value *
+                   _Protocol.InputRegisters[P120_GRID_L2_VOLTAGE].multiplier;
+  double uac_l3 = _Protocol.InputRegisters[P120_GRID_L3_VOLTAGE].value *
+                   _Protocol.InputRegisters[P120_GRID_L3_VOLTAGE].multiplier;
+  double iac_l1 = _Protocol.InputRegisters[P120_GRID_L1_OUTPUT_CURRENT].value *
+                   _Protocol.InputRegisters[P120_GRID_L1_OUTPUT_CURRENT].multiplier;
+  double iac_l2 = _Protocol.InputRegisters[P120_GRID_L2_OUTPUT_CURRENT].value *
+                   _Protocol.InputRegisters[P120_GRID_L2_OUTPUT_CURRENT].multiplier;
+  double iac_l3 = _Protocol.InputRegisters[P120_GRID_L3_OUTPUT_CURRENT].value *
+                   _Protocol.InputRegisters[P120_GRID_L3_OUTPUT_CURRENT].multiplier;
+  double pac_l1 = _Protocol.InputRegisters[P120_GRID_L1_OUTPUT_POWER].value *
+                   _Protocol.InputRegisters[P120_GRID_L1_OUTPUT_POWER].multiplier;
+  double pac_l2 = _Protocol.InputRegisters[P120_GRID_L2_OUTPUT_POWER].value *
+                   _Protocol.InputRegisters[P120_GRID_L2_OUTPUT_POWER].multiplier;
+  double pac_l3 = _Protocol.InputRegisters[P120_GRID_L3_OUTPUT_POWER].value *
+                   _Protocol.InputRegisters[P120_GRID_L3_OUTPUT_POWER].multiplier;
+  double dayE = _Protocol.InputRegisters[P120_ENERGY_TODAY].value *
+                _Protocol.InputRegisters[P120_ENERGY_TODAY].multiplier * 1000.0;
+#elif GROWATT_MODBUS_VERSION == 124
+  double uac_l1 = _Protocol.InputRegisters[P124_VAC1].value *
+                   _Protocol.InputRegisters[P124_VAC1].multiplier;
+  double uac_l2 = _Protocol.InputRegisters[P124_VAC2].value *
+                   _Protocol.InputRegisters[P124_VAC2].multiplier;
+  double uac_l3 = _Protocol.InputRegisters[P124_VAC3].value *
+                   _Protocol.InputRegisters[P124_VAC3].multiplier;
+  double iac_l1 = _Protocol.InputRegisters[P124_IAC1].value *
+                   _Protocol.InputRegisters[P124_IAC1].multiplier;
+  double iac_l2 = _Protocol.InputRegisters[P124_IAC2].value *
+                   _Protocol.InputRegisters[P124_IAC2].multiplier;
+  double iac_l3 = _Protocol.InputRegisters[P124_IAC3].value *
+                   _Protocol.InputRegisters[P124_IAC3].multiplier;
+  double pac_l1 = _Protocol.InputRegisters[P124_PAC1].value *
+                   _Protocol.InputRegisters[P124_PAC1].multiplier;
+  double pac_l2 = _Protocol.InputRegisters[P124_PAC2].value *
+                   _Protocol.InputRegisters[P124_PAC2].multiplier;
+  double pac_l3 = _Protocol.InputRegisters[P124_PAC3].value *
+                   _Protocol.InputRegisters[P124_PAC3].multiplier;
+  double dayE = _Protocol.InputRegisters[P124_EAC_TODAY].value *
+                _Protocol.InputRegisters[P124_EAC_TODAY].multiplier * 1000.0;
+#else
+  double uac_l1 = 0, uac_l2 = 0, uac_l3 = 0;
+  double iac_l1 = 0, iac_l2 = 0, iac_l3 = 0;
+  double pac_l1 = 0, pac_l2 = 0, pac_l3 = 0;
+  double dayE = 0;
+#endif
+
+  double uac_avg = (uac_l1 + uac_l2 + uac_l3) / 3.0;
+  double line_avg = uac_avg * 1.7320508; // sqrt(3)
+  double iac_avg = (iac_l1 + iac_l2 + iac_l3) / 3.0;
+  double pac_sum = pac_l1 + pac_l2 + pac_l3;
+
+  double sumPac = pac_sum;
+  double dayE_l1 = 0, dayE_l2 = 0, dayE_l3 = 0;
+  if (sumPac != 0) {
+    dayE_l1 = dayE * pac_l1 / sumPac;
+    dayE_l2 = dayE * pac_l2 / sumPac;
+    dayE_l3 = dayE * pac_l3 / sumPac;
+  }
+
+  JsonArray arr = doc.createNestedArray("VoltageAvg");
+  arr.add(_round2(uac_avg));
+  arr.add("V");
+  arr.add(false);
+
+  arr = doc.createNestedArray("LineVoltageAvg");
+  arr.add(_round2(line_avg));
+  arr.add("V");
+  arr.add(false);
+
+  arr = doc.createNestedArray("CurrentAvg");
+  arr.add(_round2(iac_avg));
+  arr.add("A");
+  arr.add(false);
+
+  arr = doc.createNestedArray("PowerSum");
+  arr.add(_round2(pac_sum));
+  arr.add("W");
+  arr.add(false);
+
+  arr = doc.createNestedArray("DayEnergyL1");
+  arr.add(_round2(dayE_l1 / 1000.0));
+  arr.add("kWh");
+  arr.add(false);
+  arr = doc.createNestedArray("DayEnergyL2");
+  arr.add(_round2(dayE_l2 / 1000.0));
+  arr.add("kWh");
+  arr.add(false);
+  arr = doc.createNestedArray("DayEnergyL3");
+  arr.add(_round2(dayE_l3 / 1000.0));
+  arr.add("kWh");
+  arr.add(false);
+
+  arr = doc.createNestedArray("TotalEnergyL1");
+  arr.add(_round2(_accEnergyL1 / 1000.0));
+  arr.add("kWh");
+  arr.add(false);
+  arr = doc.createNestedArray("TotalEnergyL2");
+  arr.add(_round2(_accEnergyL2 / 1000.0));
+  arr.add("kWh");
+  arr.add(false);
+  arr = doc.createNestedArray("TotalEnergyL3");
+  arr.add(_round2(_accEnergyL3 / 1000.0));
+  arr.add("kWh");
+  arr.add(false);
 #else
   #warning simulating the inverter
   JsonArray arr = doc.createNestedArray("Status");
