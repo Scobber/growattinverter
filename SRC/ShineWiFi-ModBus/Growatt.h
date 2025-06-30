@@ -45,6 +45,7 @@ class Growatt {
 
     eDevice_t _InitModbusCommunication();
     static double _round2(double value);
+    void _UpdateEnergyAccumulation();
 
 };
 
