@@ -411,7 +411,7 @@ void Growatt::CreateDeviceInfoJson(char *Buffer) {
 
 void Growatt::CreateUIJson(char *Buffer) {
   StaticJsonDocument<2048> doc;
-  const char* unitStr[] = {"", "W", "kWh", "V", "A", "s", "%", "Hz", "C"};
+  const char* unitStr[] = {"", "W", "kWh", "V", "A", "s", "%", "Hz", "C", "VA"};
 
 #if SIMULATE_INVERTER != 1
   for (int i = 0; i < _Protocol.InputRegisterCount; i++) {

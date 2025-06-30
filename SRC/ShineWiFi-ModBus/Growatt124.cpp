@@ -22,15 +22,15 @@ void init_growatt124(sProtocolDefinition_t &Protocol) {
     Protocol.InputRegisters[P124_PAC] = sGrowattModbusReg_t{35, 0, SIZE_32BIT, "OutputPower", 0.1, POWER_W, true, true}; // #9
     Protocol.InputRegisters[P124_FAC] = sGrowattModbusReg_t{37, 0, SIZE_16BIT, "GridFrequency", 0.01, FREQUENCY, false, false}; // #10
 
-    Protocol.InputRegisters[P124_VAC1] = sGrowattModbusReg_t{38, 0, SIZE_16BIT, "L1ThreePhaseGridVoltage", 0.1, VOLTAGE, false, false}; // #11
-    Protocol.InputRegisters[P124_IAC1] = sGrowattModbusReg_t{39, 0, SIZE_16BIT, "L1ThreePhaseGridOutputCurrent", 0.1, CURRENT, false, false}; // #12
-    Protocol.InputRegisters[P124_PAC1] = sGrowattModbusReg_t{40, 0, SIZE_32BIT, "L1ThreePhaseGridOutputPower", 0.1, VA, false, false}; // #13
-    Protocol.InputRegisters[P124_VAC2] = sGrowattModbusReg_t{42, 0, SIZE_16BIT, "L2ThreePhaseGridVoltage", 0.1, VOLTAGE, false, false}; // #14
-    Protocol.InputRegisters[P124_IAC2] = sGrowattModbusReg_t{43, 0, SIZE_16BIT, "L2ThreePhaseGridOutputCurrent", 0.1, CURRENT, false, false}; // #15
-    Protocol.InputRegisters[P124_PAC2] = sGrowattModbusReg_t{44, 0, SIZE_32BIT, "L2ThreePhaseGridOutputPower", 0.1, VA, false, false}; // #16
-    Protocol.InputRegisters[P124_VAC3] = sGrowattModbusReg_t{46, 0, SIZE_16BIT, "L3ThreePhaseGridVoltage", 0.1, VOLTAGE, false, false}; // #17
-    Protocol.InputRegisters[P124_IAC3] = sGrowattModbusReg_t{47, 0, SIZE_16BIT, "L3ThreePhaseGridOutputCurrent", 0.1, CURRENT, false, false}; // #18
-    Protocol.InputRegisters[P124_PAC3] = sGrowattModbusReg_t{48, 0, SIZE_32BIT, "L3ThreePhaseGridOutputPower", 0.1, VA, false, false}; // #19
+    Protocol.InputRegisters[P124_VAC1] = sGrowattModbusReg_t{38, 0, SIZE_16BIT, "L1ThreePhaseGridVoltage", 0.1, VOLTAGE, true, false}; // #11
+    Protocol.InputRegisters[P124_IAC1] = sGrowattModbusReg_t{39, 0, SIZE_16BIT, "L1ThreePhaseGridOutputCurrent", 0.1, CURRENT, true, false}; // #12
+    Protocol.InputRegisters[P124_PAC1] = sGrowattModbusReg_t{40, 0, SIZE_32BIT, "L1ThreePhaseGridOutputPower", 0.1, VA, true, false}; // #13
+    Protocol.InputRegisters[P124_VAC2] = sGrowattModbusReg_t{42, 0, SIZE_16BIT, "L2ThreePhaseGridVoltage", 0.1, VOLTAGE, true, false}; // #14
+    Protocol.InputRegisters[P124_IAC2] = sGrowattModbusReg_t{43, 0, SIZE_16BIT, "L2ThreePhaseGridOutputCurrent", 0.1, CURRENT, true, false}; // #15
+    Protocol.InputRegisters[P124_PAC2] = sGrowattModbusReg_t{44, 0, SIZE_32BIT, "L2ThreePhaseGridOutputPower", 0.1, VA, true, false}; // #16
+    Protocol.InputRegisters[P124_VAC3] = sGrowattModbusReg_t{46, 0, SIZE_16BIT, "L3ThreePhaseGridVoltage", 0.1, VOLTAGE, true, false}; // #17
+    Protocol.InputRegisters[P124_IAC3] = sGrowattModbusReg_t{47, 0, SIZE_16BIT, "L3ThreePhaseGridOutputCurrent", 0.1, CURRENT, true, false}; // #18
+    Protocol.InputRegisters[P124_PAC3] = sGrowattModbusReg_t{48, 0, SIZE_32BIT, "L3ThreePhaseGridOutputPower", 0.1, VA, true, false}; // #19
     // FEAGMENT 1: END
 
     // FEAGMENT 2: BEGIN
