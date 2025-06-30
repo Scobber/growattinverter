@@ -35,6 +35,13 @@ class Growatt {
     eDevice_t _eDevice;
     bool _GotData;
     uint32_t _PacketCnt;
+    // previous total energy reading to compute increments
+    double _prevTotalEnergy;
+    bool _prevEnergyValid;
+    // accumulated phase energies in Wh since startup
+    double _accEnergyL1;
+    double _accEnergyL2;
+    double _accEnergyL3;
 
     eDevice_t _InitModbusCommunication();
     static double _round2(double value);
