@@ -491,8 +491,8 @@ void Growatt::CreateFroniusJson(char *Buffer) {
   double udc  = _Protocol.InputRegisters[P124_PV1_VOLTAGE].value * _Protocol.InputRegisters[P124_PV1_VOLTAGE].multiplier;
   double idc  = (_Protocol.InputRegisters[P124_PV1_CURRENT].value * _Protocol.InputRegisters[P124_PV1_CURRENT].multiplier) +
                  (_Protocol.InputRegisters[P124_PV2_CURRENT].value * _Protocol.InputRegisters[P124_PV2_CURRENT].multiplier);
-  double dayE = _Protocol.InputRegisters[P124_EAC_TODAY].value * _Protocol.InputRegisters[P124_EAC_TODAY].multiplier * 1000.0;
-  double totE = _Protocol.InputRegisters[P124_EAC_TOTAL].value * _Protocol.InputRegisters[P124_EAC_TOTAL].multiplier * 1000.0;
+  double dayE = _Protocol.InputRegisters[P124_ETOLOCALLOAD_TODAY].value * _Protocol.InputRegisters[P124_ETOLOCALLOAD_TODAY].multiplier * 1000.0;
+  double totE = _Protocol.InputRegisters[P124_ETOLOCALLOAD_TOTAL].value * _Protocol.InputRegisters[P124_ETOLOCALLOAD_TOTAL].multiplier * 1000.0;
   double uac_l1 = _Protocol.InputRegisters[P124_VAC1].value * _Protocol.InputRegisters[P124_VAC1].multiplier;
   double uac_l2 = _Protocol.InputRegisters[P124_VAC2].value * _Protocol.InputRegisters[P124_VAC2].multiplier;
   double uac_l3 = _Protocol.InputRegisters[P124_VAC3].value * _Protocol.InputRegisters[P124_VAC3].multiplier;
@@ -656,8 +656,8 @@ void Growatt::CreatePowerFlowJson(char *Buffer) {
 #elif GROWATT_MODBUS_VERSION == 124
   double pac = _Protocol.InputRegisters[P124_PAC].value * _Protocol.InputRegisters[P124_PAC].multiplier;
   double pdc = _Protocol.InputRegisters[P124_INPUT_POWER].value * _Protocol.InputRegisters[P124_INPUT_POWER].multiplier;
-  double dayE = _Protocol.InputRegisters[P124_EAC_TODAY].value * _Protocol.InputRegisters[P124_EAC_TODAY].multiplier * 1000.0;
-  double totE = _Protocol.InputRegisters[P124_EAC_TOTAL].value * _Protocol.InputRegisters[P124_EAC_TOTAL].multiplier * 1000.0;
+  double dayE = _Protocol.InputRegisters[P124_ETOLOCALLOAD_TODAY].value * _Protocol.InputRegisters[P124_ETOLOCALLOAD_TODAY].multiplier * 1000.0;
+  double totE = _Protocol.InputRegisters[P124_ETOLOCALLOAD_TOTAL].value * _Protocol.InputRegisters[P124_ETOLOCALLOAD_TOTAL].multiplier * 1000.0;
 #else
   double pac = 0, pdc = 0, dayE = 0, totE = 0;
 #endif
