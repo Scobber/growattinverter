@@ -268,6 +268,19 @@ double Growatt::_round2(double value) {
    return (int)(value * 100 + 0.5) / 100.0;
 }
 
+uint8_t Growatt::MapStatusToFronius(uint32_t status) {
+  switch (status) {
+    case GwStatusWaiting:
+      return 1;  // Waiting
+    case GwStatusNormal:
+      return 7;  // Running
+    case GwStatusFault:
+      return 16; // Fault
+    default:
+      return 0;  // Unknown
+  }
+}
+
 void Growatt::CreateJson(char *Buffer, const char *MacAddress) {
   StaticJsonDocument<2048> doc;
 
@@ -325,6 +338,17 @@ void Growatt::CreateDeviceInfoJson(char *Buffer) {
 
   JsonObject body = doc.createNestedObject("Body");
   JsonObject data = body.createNestedObject("Data");
+
+#if GROWATT_MODBUS_VERSION == 305
+  uint32_t gwStatus = _Protocol.InputRegisters[P305_I_STATUS].value;
+#elif GROWATT_MODBUS_VERSION == 120
+  uint32_t gwStatus = _Protocol.InputRegisters[P120_I_STATUS].value;
+#elif GROWATT_MODBUS_VERSION == 124
+  uint32_t gwStatus = _Protocol.InputRegisters[P124_I_STATUS].value;
+#else
+  uint32_t gwStatus = 0;
+#endif
+  uint8_t froniusStatus = MapStatusToFronius(gwStatus);
   data["DeviceType"] = FRONIUS_DEVICE_TYPE;
   data["Serial"] = FRONIUS_SERIAL;
 
@@ -480,6 +504,18 @@ void Growatt::CreateFroniusJson(char *Buffer) {
   double pac_l1 = 0, pac_l2 = 0, pac_l3 = 0;
 #endif
 
+  double dayE_l1 = 0, dayE_l2 = 0, dayE_l3 = 0;
+  double totE_l1 = 0, totE_l2 = 0, totE_l3 = 0;
+  double sumPac = pac_l1 + pac_l2 + pac_l3;
+  if (sumPac != 0) {
+    dayE_l1 = dayE * pac_l1 / sumPac;
+    dayE_l2 = dayE * pac_l2 / sumPac;
+    dayE_l3 = dayE * pac_l3 / sumPac;
+    totE_l1 = totE * pac_l1 / sumPac;
+    totE_l2 = totE * pac_l2 / sumPac;
+    totE_l3 = totE * pac_l3 / sumPac;
+  }
+
   JsonObject pacObj = data.createNestedObject("PAC");
   pacObj["Value"] = pac;
   pacObj["Unit"] = "W";
@@ -513,6 +549,9 @@ void Growatt::CreateFroniusJson(char *Buffer) {
   JsonObject iacL3Obj = data.createNestedObject("IAC_L3");
   iacL3Obj["Value"] = iac_l3;
   iacL3Obj["Unit"] = "A";
+  JsonObject devStat = data.createNestedObject("DeviceStatus");
+  devStat["ErrorCode"] = 0;
+  devStat["StatusCode"] = froniusStatus;
   JsonObject pacL1Obj = data.createNestedObject("PAC_L1");
   pacL1Obj["Value"] = pac_l1;
   pacL1Obj["Unit"] = "W";
@@ -531,9 +570,27 @@ void Growatt::CreateFroniusJson(char *Buffer) {
   JsonObject dayObj = data.createNestedObject("DAY_ENERGY");
   dayObj["Value"] = dayE;
   dayObj["Unit"] = "Wh";
+  JsonObject dayL1Obj = data.createNestedObject("DAY_ENERGY_L1");
+  dayL1Obj["Value"] = dayE_l1;
+  dayL1Obj["Unit"] = "Wh";
+  JsonObject dayL2Obj = data.createNestedObject("DAY_ENERGY_L2");
+  dayL2Obj["Value"] = dayE_l2;
+  dayL2Obj["Unit"] = "Wh";
+  JsonObject dayL3Obj = data.createNestedObject("DAY_ENERGY_L3");
+  dayL3Obj["Value"] = dayE_l3;
+  dayL3Obj["Unit"] = "Wh";
   JsonObject totObj = data.createNestedObject("TOTAL_ENERGY");
   totObj["Value"] = totE;
   totObj["Unit"] = "Wh";
+  JsonObject totL1Obj = data.createNestedObject("TOTAL_ENERGY_L1");
+  totL1Obj["Value"] = totE_l1;
+  totL1Obj["Unit"] = "Wh";
+  JsonObject totL2Obj = data.createNestedObject("TOTAL_ENERGY_L2");
+  totL2Obj["Value"] = totE_l2;
+  totL2Obj["Unit"] = "Wh";
+  JsonObject totL3Obj = data.createNestedObject("TOTAL_ENERGY_L3");
+  totL3Obj["Value"] = totE_l3;
+  totL3Obj["Unit"] = "Wh";
 
   serializeJson(doc, Buffer, MQTT_MAX_PACKET_SIZE);
 }
@@ -622,12 +679,23 @@ void Growatt::CreateInverterInfoJson(char *Buffer) {
   double pdc = 0;
 #endif
 
+#if GROWATT_MODBUS_VERSION == 305
+  uint32_t gwStatus = _Protocol.InputRegisters[P305_I_STATUS].value;
+#elif GROWATT_MODBUS_VERSION == 120
+  uint32_t gwStatus = _Protocol.InputRegisters[P120_I_STATUS].value;
+#elif GROWATT_MODBUS_VERSION == 124
+  uint32_t gwStatus = _Protocol.InputRegisters[P124_I_STATUS].value;
+#else
+  uint32_t gwStatus = 0;
+#endif
+  uint8_t froniusStatus = MapStatusToFronius(gwStatus);
+
   inv["CustomName"] = "Growatt Inverter";
   inv["DT"] = FRONIUS_DEVICE_TYPE;
   inv["ErrorCode"] = 0;
   inv["PVPower"] = (uint32_t)pdc;
   inv["Show"] = 1;
-  inv["StatusCode"] = 7;
+  inv["StatusCode"] = froniusStatus;
   inv["UniqueID"] = FRONIUS_SERIAL;
 
   serializeJson(doc, Buffer, MQTT_MAX_PACKET_SIZE);
