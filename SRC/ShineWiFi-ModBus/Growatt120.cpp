@@ -37,17 +37,17 @@ void init_growatt120(sProtocolDefinition_t &Protocol)
     Protocol.InputRegisters[P120_OUTPUT_POWER] = sGrowattModbusReg_t{35, 0, SIZE_32BIT, "OutputPower", 0.1, POWER_W, true, true};          // #9
     Protocol.InputRegisters[P120_GRID_FREQUENCY] = sGrowattModbusReg_t{37, 0, SIZE_16BIT, "GridFrequency", 0.01, FREQUENCY, false, false}; // #10
 
-    Protocol.InputRegisters[P120_GRID_L1_VOLTAGE] = sGrowattModbusReg_t{38, 0, SIZE_16BIT, "GridL1Voltage", 0.1, VOLTAGE, false, false};              // #11
-    Protocol.InputRegisters[P120_GRID_L1_OUTPUT_CURRENT] = sGrowattModbusReg_t{39, 0, SIZE_16BIT, "GridL1OutputCurrent", 0.1, CURRENT, false, false}; // #12
-    Protocol.InputRegisters[P120_GRID_L1_OUTPUT_POWER] = sGrowattModbusReg_t{40, 0, SIZE_32BIT, "GridL1OutputPower", 0.1, VA, false, false};          // #13
+    Protocol.InputRegisters[P120_GRID_L1_VOLTAGE] = sGrowattModbusReg_t{38, 0, SIZE_16BIT, "GridL1Voltage", 0.1, VOLTAGE, true, false};              // #11
+    Protocol.InputRegisters[P120_GRID_L1_OUTPUT_CURRENT] = sGrowattModbusReg_t{39, 0, SIZE_16BIT, "GridL1OutputCurrent", 0.1, CURRENT, true, false}; // #12
+    Protocol.InputRegisters[P120_GRID_L1_OUTPUT_POWER] = sGrowattModbusReg_t{40, 0, SIZE_32BIT, "GridL1OutputPower", 0.1, VA, true, false};          // #13
 
-    Protocol.InputRegisters[P120_GRID_L2_VOLTAGE] = sGrowattModbusReg_t{42, 0, SIZE_16BIT, "GridL2Voltage", 0.1, VOLTAGE, false, false};              // #14
-    Protocol.InputRegisters[P120_GRID_L2_OUTPUT_CURRENT] = sGrowattModbusReg_t{43, 0, SIZE_16BIT, "GridL2OutputCurrent", 0.1, CURRENT, false, false}; // #15
-    Protocol.InputRegisters[P120_GRID_L2_OUTPUT_POWER] = sGrowattModbusReg_t{44, 0, SIZE_32BIT, "GridL2OutputPower", 0.1, VA, false, false};          // #16
+    Protocol.InputRegisters[P120_GRID_L2_VOLTAGE] = sGrowattModbusReg_t{42, 0, SIZE_16BIT, "GridL2Voltage", 0.1, VOLTAGE, true, false};              // #14
+    Protocol.InputRegisters[P120_GRID_L2_OUTPUT_CURRENT] = sGrowattModbusReg_t{43, 0, SIZE_16BIT, "GridL2OutputCurrent", 0.1, CURRENT, true, false}; // #15
+    Protocol.InputRegisters[P120_GRID_L2_OUTPUT_POWER] = sGrowattModbusReg_t{44, 0, SIZE_32BIT, "GridL2OutputPower", 0.1, VA, true, false};          // #16
 
-    Protocol.InputRegisters[P120_GRID_L3_VOLTAGE] = sGrowattModbusReg_t{46, 0, SIZE_16BIT, "GridL3Voltage", 0.1, VOLTAGE, false, false};              // #17
-    Protocol.InputRegisters[P120_GRID_L3_OUTPUT_CURRENT] = sGrowattModbusReg_t{47, 0, SIZE_16BIT, "GridL3OutputCurrent", 0.1, CURRENT, false, false}; // #18
-    Protocol.InputRegisters[P120_GRID_L3_OUTPUT_POWER] = sGrowattModbusReg_t{48, 0, SIZE_32BIT, "GridL3OutputPower", 0.1, VA, false, false};          // #19
+    Protocol.InputRegisters[P120_GRID_L3_VOLTAGE] = sGrowattModbusReg_t{46, 0, SIZE_16BIT, "GridL3Voltage", 0.1, VOLTAGE, true, false};              // #17
+    Protocol.InputRegisters[P120_GRID_L3_OUTPUT_CURRENT] = sGrowattModbusReg_t{47, 0, SIZE_16BIT, "GridL3OutputCurrent", 0.1, CURRENT, true, false}; // #18
+    Protocol.InputRegisters[P120_GRID_L3_OUTPUT_POWER] = sGrowattModbusReg_t{48, 0, SIZE_32BIT, "GridL3OutputPower", 0.1, VA, true, false};          // #19
     // FRAGMENT 1: END
 
     // FEAGMENT 2: BEGIN
