@@ -2,7 +2,8 @@
 #include "Growatt125.h"
 
 void init_growatt125(sProtocolDefinition_t &Protocol) {
-    Protocol.InputRegisterCount = 90;
+    // Set count explicitly to match defined registers (auto-deduced)
+    Protocol.InputRegisterCount = P125_REGISTER_COUNT;
 
     // Read fragments (respect 64-register limit)
     Protocol.InputFragmentCount = 4;
@@ -86,8 +87,6 @@ void init_growatt125(sProtocolDefinition_t &Protocol) {
 
     Protocol.InputRegisters[P125_OUTPUT_PERCENT] = {1100, 0, SIZE_16BIT, "OutputPercent", 0.1, PRECENTAGE, false, false};
     Protocol.InputRegisters[P125_PF] = {1101, 0, SIZE_16BIT, "PowerFactor", 0.01, NONE, false, false};
-    Protocol.InputRegisters[P125_OUTPUT_LIMIT_POWER_H] = {1102, 0, SIZE_16BIT, "OutputLimitPowerH", 1, NONE, false, false};
-    Protocol.InputRegisters[P125_OUTPUT_LIMIT_POWER_L] = {1103, 0, SIZE_16BIT, "OutputLimitPowerL", 1, NONE, false, false};
     Protocol.InputRegisters[P125_REACTIVE_POWER_MODE] = {1120, 0, SIZE_16BIT, "ReactivePowerMode", 1, NONE, false, false};
     Protocol.InputRegisters[P125_PF_COMMAND] = {1121, 0, SIZE_16BIT, "PowerFactorCommand", 0.01, NONE, false, false};
 
