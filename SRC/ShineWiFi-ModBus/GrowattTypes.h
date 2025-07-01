@@ -78,8 +78,10 @@ typedef struct {
 typedef struct {
     uint16_t InputRegisterCount;
     uint8_t InputFragmentCount;
+    uint8_t InputFastFragmentCount;
     uint16_t HoldingRegisterCount;
     uint8_t HoldingFragmentCount;
+    uint8_t HoldingFastFragmentCount;
     sGrowattModbusReg_t InputRegisters[125];
     sGrowattModbusReg_t HoldingRegisters[125];
     sGrowattReadFragment_t InputReadFragments[20];

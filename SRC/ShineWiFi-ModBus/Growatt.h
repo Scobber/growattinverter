@@ -13,7 +13,9 @@ class Growatt {
 
     bool ReadInputRegisters();
     bool ReadHoldingRegisters();
-    bool ReadData();
+    bool ReadInputRegistersFast();
+    bool ReadHoldingRegistersFast();
+    bool ReadData(bool fullRead = true);
     eDevice_t GetWiFiStickType();
     sGrowattModbusReg_t GetInputRegister(uint16_t reg);
     sGrowattModbusReg_t GetHoldingRegister(uint16_t reg);

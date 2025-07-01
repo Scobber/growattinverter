@@ -18,6 +18,7 @@ void init_growatt120(sProtocolDefinition_t &Protocol)
     // definition of input registers
     Protocol.InputRegisterCount = 29;
     Protocol.InputFragmentCount = 2;
+    Protocol.InputFastFragmentCount = 1;
     Protocol.InputReadFragments[0] = sGrowattReadFragment_t{0, 49};
     Protocol.InputReadFragments[1] = sGrowattReadFragment_t{53, 42};
 
@@ -68,6 +69,7 @@ void init_growatt120(sProtocolDefinition_t &Protocol)
     // definition of holding registers
     Protocol.HoldingRegisterCount = 3;
     Protocol.HoldingFragmentCount = 1;
+    Protocol.HoldingFastFragmentCount = 1;
     Protocol.HoldingReadFragments[0] = sGrowattReadFragment_t{0, 4};
 
     // FRAGMENT 1: BEGIN

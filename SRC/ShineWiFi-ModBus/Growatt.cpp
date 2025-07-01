@@ -129,6 +129,34 @@ bool Growatt::ReadInputRegisters() {
   return true;
 }
 
+bool Growatt::ReadInputRegistersFast() {
+  uint16_t registerAddress;
+  uint8_t res;
+  for (int i = 0; i < _Protocol.InputFastFragmentCount; i++) {
+    res = Modbus.readInputRegisters(
+      _Protocol.InputReadFragments[i].StartAddress,
+      _Protocol.InputReadFragments[i].FragmentSize
+    );
+    if(res == Modbus.ku8MBSuccess) {
+      for (int j = 0; j < _Protocol.InputRegisterCount; j++) {
+        if (_Protocol.InputRegisters[j].address >= _Protocol.InputReadFragments[i].StartAddress) {
+          if (_Protocol.InputRegisters[j].address >= _Protocol.InputReadFragments[i].StartAddress + _Protocol.InputReadFragments[i].FragmentSize)
+            break;
+          registerAddress = _Protocol.InputRegisters[j].address - _Protocol.InputReadFragments[i].StartAddress;
+          if (_Protocol.InputRegisters[j].size == SIZE_16BIT) {
+            _Protocol.InputRegisters[j].value = Modbus.getResponseBuffer(registerAddress);
+          } else {
+            _Protocol.InputRegisters[j].value = (Modbus.getResponseBuffer(registerAddress) << 16) + Modbus.getResponseBuffer(registerAddress + 1);
+          }
+        }
+      }
+    } else {
+      return false;
+    }
+  }
+  return true;
+}
+
 bool Growatt::ReadHoldingRegisters() {
   /**
    * @brief Read the holding registers from the inverter
@@ -163,14 +191,48 @@ bool Growatt::ReadHoldingRegisters() {
   return true;
 }
 
-bool Growatt::ReadData() {
+bool Growatt::ReadHoldingRegistersFast() {
+  uint16_t registerAddress;
+  uint8_t res;
+  for (int i = 0; i < _Protocol.HoldingFastFragmentCount; i++) {
+    res = Modbus.readHoldingRegisters(
+      _Protocol.HoldingReadFragments[i].StartAddress,
+      _Protocol.HoldingReadFragments[i].FragmentSize
+    );
+    if(res == Modbus.ku8MBSuccess) {
+      for (int j = 0; j < _Protocol.HoldingRegisterCount; j++) {
+        if (_Protocol.HoldingRegisters[j].address >= _Protocol.HoldingReadFragments[i].StartAddress) {
+          if (_Protocol.HoldingRegisters[j].address >= _Protocol.HoldingReadFragments[i].StartAddress + _Protocol.HoldingReadFragments[i].FragmentSize)
+            break;
+          registerAddress = _Protocol.HoldingRegisters[j].address - _Protocol.HoldingReadFragments[i].StartAddress;
+          if (_Protocol.HoldingRegisters[j].size == SIZE_16BIT) {
+            _Protocol.HoldingRegisters[j].value = Modbus.getResponseBuffer(registerAddress);
+          } else {
+            _Protocol.HoldingRegisters[j].value = (Modbus.getResponseBuffer(registerAddress) << 16) + Modbus.getResponseBuffer(registerAddress + 1);
+          }
+        }
+      }
+    } else {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool Growatt::ReadData(bool fullRead) {
   /**
    * @brief Reads the data from the inverter and updates the internal data structures
    * @returns true if data was read successfully, false otherwise
    */
 
   _PacketCnt++;
-  _GotData = ReadInputRegisters() && ReadHoldingRegisters();
+  bool ok;
+  if(fullRead) {
+    ok = ReadInputRegisters() && ReadHoldingRegisters();
+  } else {
+    ok = ReadInputRegistersFast() && ReadHoldingRegistersFast();
+  }
+  _GotData = ok;
   if (_GotData) {
     _UpdateEnergyAccumulation();
   }
