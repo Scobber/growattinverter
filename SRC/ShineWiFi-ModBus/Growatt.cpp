@@ -307,6 +307,23 @@ bool Growatt::WriteHoldingReg(uint16_t adr, uint16_t value) {
     return false;
 }
 
+bool Growatt::ConfigureExportLimit(uint16_t percent) {
+#if GROWATT_MODBUS_VERSION == 125
+  uint16_t scaled = percent * 10; // register uses 0.1 percent units
+  bool ok = true;
+  ok &= WriteHoldingReg(_Protocol.HoldingRegisters[P125_EXPORT_LIMIT_ENABLED_WR].address, 1);
+  ok &= WriteHoldingReg(_Protocol.HoldingRegisters[P125_EXPORT_LIMIT_PERCENT_WR].address, scaled);
+  if (ok) {
+    _Protocol.HoldingRegisters[P125_EXPORT_LIMIT_ENABLED_WR].value = 1;
+    _Protocol.HoldingRegisters[P125_EXPORT_LIMIT_PERCENT_WR].value = scaled;
+  }
+  return ok;
+#else
+  (void)percent;
+  return false;
+#endif
+}
+
 
 bool Growatt::ReadInputReg(uint16_t adr, uint16_t* result) {
   /**

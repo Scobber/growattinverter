@@ -62,6 +62,12 @@ typedef enum {
     P125_REGISTER_COUNT
 } eP125InputRegisters_t;
 
+typedef enum
+{
+    P125_EXPORT_LIMIT_ENABLED_WR,  // Register 1148
+    P125_EXPORT_LIMIT_PERCENT_WR   // Register 1149
+} eP125HoldingRegisters_t;
+
 void init_growatt125(sProtocolDefinition_t &Protocol);
 
 #endif // _GROWATT_1_25_H_

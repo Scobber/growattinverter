@@ -14,9 +14,10 @@ void init_growatt125(sProtocolDefinition_t &Protocol) {
     Protocol.InputReadFragments[2] = sGrowattReadFragment_t{128, 64};
     Protocol.InputReadFragments[3] = sGrowattReadFragment_t{192, 64};
 
-    Protocol.HoldingRegisterCount = 0;
-    Protocol.HoldingFragmentCount = 0;
-    Protocol.HoldingFastFragmentCount = 0;
+    Protocol.HoldingRegisterCount = 2;
+    Protocol.HoldingFragmentCount = 1;
+    Protocol.HoldingFastFragmentCount = 1;
+    Protocol.HoldingReadFragments[0] = sGrowattReadFragment_t{1148, 2};
 
     // FEAGMENT 1: BEGIN
     Protocol.InputRegisters[P125_I_STATUS] = sGrowattModbusReg_t{0, 0, SIZE_16BIT, "InverterStatus", 1, NONE, true, false}; // #1
@@ -104,4 +105,8 @@ void init_growatt125(sProtocolDefinition_t &Protocol) {
     Protocol.InputRegisters[P125_RECONNECT_DELAY] = sGrowattModbusReg_t{1137, 0, SIZE_16BIT, "ReconnectDelay", 1, SECONDS, false, false}; // #70
     Protocol.InputRegisters[P125_RAMP_UP_RATE] = sGrowattModbusReg_t{1138, 0, SIZE_16BIT, "RampUpRate", 0.1, NONE, false, false}; // #71
     Protocol.InputRegisters[P125_RAMP_DOWN_RATE] = sGrowattModbusReg_t{1139, 0, SIZE_16BIT, "RampDownRate", 0.1, NONE, false, false}; // #72
+
+    // definition of holding registers
+    Protocol.HoldingRegisters[P125_EXPORT_LIMIT_ENABLED_WR] = sGrowattModbusReg_t{1148, 0, SIZE_16BIT, "ExportLimitEnabled", 1, NONE, true, false}; // #1
+    Protocol.HoldingRegisters[P125_EXPORT_LIMIT_PERCENT_WR] = sGrowattModbusReg_t{1149, 0, SIZE_16BIT, "ExportLimitPercent", 0.1, PRECENTAGE, true, false}; // #2
 }

@@ -7,7 +7,7 @@ Firmware replacement for Growatt ShineWiFi-S (serial), ShineWiFi-X (USB) or cust
     * For the original Arduino IDE follow the instruction in the main ino [file](https://github.com/otti/Growatt_ShineWiFi-S/blob/master/SRC/ShineWiFi-ModBus/ShineWiFi-ModBus.ino)
     * For platformio just open the project folder and choose the correct env for your hardware
 * Rename and adapt [Config.h.example](https://github.com/otti/Growatt_ShineWiFi-S/blob/master/SRC/ShineWiFi-ModBus/Config.h.example) to Config.h with your compile time settings
-* To access the `/debug` and `/postCommunicationModbus` pages, ensure that `ENABLE_WEB_DEBUG` and `ENABLE_MODBUS_COMMUNICATION` are set in `Config.h`
+* To access the `/debug` and `/postCommunicationModbus` pages, ensure that `ENABLE_WEB_DEBUG` is set in `Config.h`
 * Flash to an esp32/esp8266
 * For detailed flashing instructions see https://github.com/otti/Growatt_ShineWiFi-S/blob/master/Doc/
 * Connect to the setup wifi called GrowattConfig (PW: growsolar) and configure the firmware via the webinterface at http://192.168.4.1
@@ -28,7 +28,8 @@ Implemented Features:
   `/solar_api/v1/GetLoggerInfo.cgi`, and `/solar_api/v1/GetActiveDeviceInfo.cgi`
 * AC phase statistics (L1-L3) are exposed through the Fronius API endpoints
 * Wifi manager with own access point for initial configuration of Wifi and MQTT server (IP: 192.168.4.1, SSID: GrowattConfig, Pass: growsolar)
-* Currently Growatt v1.24 and 3.05 protocols are implemented and can be easily extended/changed to fit anyone's needs
+* Currently Growatt v1.24, v1.25 and 3.05 protocols are implemented and can be easily extended/changed to fit anyone's needs
+* Protocol v1.25 allows configuring the inverter export limit via Modbus holding registers; the firmware automatically enables export limiting at 100% on startup
 
 Not supported:
 * It does not make use the RTC or SPI Flash of these boards..
