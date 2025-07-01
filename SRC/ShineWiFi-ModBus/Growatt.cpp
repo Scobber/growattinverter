@@ -14,6 +14,8 @@
   #include "Growatt120.h"
 #elif GROWATT_MODBUS_VERSION == 124
   #include "Growatt124.h"
+#elif GROWATT_MODBUS_VERSION == 125
+  #include "Growatt125.h"
 #elif GROWATT_MODBUS_VERSION == 305
   #include "Growatt305.h"
 #else
@@ -42,6 +44,8 @@ void Growatt::InitProtocol() {
     init_growatt120(_Protocol); 
   #elif GROWATT_MODBUS_VERSION == 124
     init_growatt124(_Protocol);
+  #elif GROWATT_MODBUS_VERSION == 125
+    init_growatt125(_Protocol);
   #elif GROWATT_MODBUS_VERSION == 305
     init_growatt305(_Protocol);
   #else
@@ -302,6 +306,15 @@ void Growatt::_UpdateEnergyAccumulation() {
                   _Protocol.InputRegisters[P124_PAC2].multiplier;
   double pac_l3 = _Protocol.InputRegisters[P124_PAC3].value *
                   _Protocol.InputRegisters[P124_PAC3].multiplier;
+#elif GROWATT_MODBUS_VERSION == 125
+  double totE = _Protocol.InputRegisters[P125_EAC_TOTAL].value *
+                _Protocol.InputRegisters[P125_EAC_TOTAL].multiplier * 1000.0;
+  double pac_l1 = _Protocol.InputRegisters[P125_PAC1].value *
+                  _Protocol.InputRegisters[P125_PAC1].multiplier;
+  double pac_l2 = _Protocol.InputRegisters[P125_PAC2].value *
+                  _Protocol.InputRegisters[P125_PAC2].multiplier;
+  double pac_l3 = _Protocol.InputRegisters[P125_PAC3].value *
+                  _Protocol.InputRegisters[P125_PAC3].multiplier;
 #else
   double totE = 0;
   double pac_l1 = 0, pac_l2 = 0, pac_l3 = 0;
@@ -399,6 +412,8 @@ void Growatt::CreateDeviceInfoJson(char *Buffer) {
   uint32_t gwStatus = _Protocol.InputRegisters[P120_I_STATUS].value;
 #elif GROWATT_MODBUS_VERSION == 124
   uint32_t gwStatus = _Protocol.InputRegisters[P124_I_STATUS].value;
+#elif GROWATT_MODBUS_VERSION == 125
+  uint32_t gwStatus = _Protocol.InputRegisters[P125_I_STATUS].value;
 #else
   uint32_t gwStatus = 0;
 #endif
@@ -498,6 +513,27 @@ void Growatt::CreateUIJson(char *Buffer) {
                    _Protocol.InputRegisters[P124_PAC3].multiplier;
   double dayE = _Protocol.InputRegisters[P124_EAC_TODAY].value *
                 _Protocol.InputRegisters[P124_EAC_TODAY].multiplier * 1000.0;
+#elif GROWATT_MODBUS_VERSION == 125
+  double uac_l1 = _Protocol.InputRegisters[P125_VAC1].value *
+                   _Protocol.InputRegisters[P125_VAC1].multiplier;
+  double uac_l2 = _Protocol.InputRegisters[P125_VAC2].value *
+                   _Protocol.InputRegisters[P125_VAC2].multiplier;
+  double uac_l3 = _Protocol.InputRegisters[P125_VAC3].value *
+                   _Protocol.InputRegisters[P125_VAC3].multiplier;
+  double iac_l1 = _Protocol.InputRegisters[P125_IAC1].value *
+                   _Protocol.InputRegisters[P125_IAC1].multiplier;
+  double iac_l2 = _Protocol.InputRegisters[P125_IAC2].value *
+                   _Protocol.InputRegisters[P125_IAC2].multiplier;
+  double iac_l3 = _Protocol.InputRegisters[P125_IAC3].value *
+                   _Protocol.InputRegisters[P125_IAC3].multiplier;
+  double pac_l1 = _Protocol.InputRegisters[P125_PAC1].value *
+                   _Protocol.InputRegisters[P125_PAC1].multiplier;
+  double pac_l2 = _Protocol.InputRegisters[P125_PAC2].value *
+                   _Protocol.InputRegisters[P125_PAC2].multiplier;
+  double pac_l3 = _Protocol.InputRegisters[P125_PAC3].value *
+                   _Protocol.InputRegisters[P125_PAC3].multiplier;
+  double dayE = _Protocol.InputRegisters[P125_EAC_TODAY].value *
+                _Protocol.InputRegisters[P125_EAC_TODAY].multiplier * 1000.0;
 #else
   double uac_l1 = 0, uac_l2 = 0, uac_l3 = 0;
   double iac_l1 = 0, iac_l2 = 0, iac_l3 = 0;
@@ -672,6 +708,26 @@ void Growatt::CreateFroniusJson(char *Buffer) {
   double pac_l1 = _Protocol.InputRegisters[P124_PAC1].value * _Protocol.InputRegisters[P124_PAC1].multiplier;
   double pac_l2 = _Protocol.InputRegisters[P124_PAC2].value * _Protocol.InputRegisters[P124_PAC2].multiplier;
   double pac_l3 = _Protocol.InputRegisters[P124_PAC3].value * _Protocol.InputRegisters[P124_PAC3].multiplier;
+#elif GROWATT_MODBUS_VERSION == 125
+  double pac  = _Protocol.InputRegisters[P125_PAC].value * _Protocol.InputRegisters[P125_PAC].multiplier;
+  double fac  = _Protocol.InputRegisters[P125_FAC].value * _Protocol.InputRegisters[P125_FAC].multiplier;
+  double uac  = _Protocol.InputRegisters[P125_VAC1].value * _Protocol.InputRegisters[P125_VAC1].multiplier;
+  double iac  = _Protocol.InputRegisters[P125_IAC1].value * _Protocol.InputRegisters[P125_IAC1].multiplier;
+  double pdc  = _Protocol.InputRegisters[P125_INPUT_POWER].value * _Protocol.InputRegisters[P125_INPUT_POWER].multiplier;
+  double udc  = _Protocol.InputRegisters[P125_PV1_VOLTAGE].value * _Protocol.InputRegisters[P125_PV1_VOLTAGE].multiplier;
+  double idc  = (_Protocol.InputRegisters[P125_PV1_CURRENT].value * _Protocol.InputRegisters[P125_PV1_CURRENT].multiplier) +
+                 (_Protocol.InputRegisters[P125_PV2_CURRENT].value * _Protocol.InputRegisters[P125_PV2_CURRENT].multiplier);
+  double dayE = _Protocol.InputRegisters[P125_EAC_TODAY].value * _Protocol.InputRegisters[P125_EAC_TODAY].multiplier * 1000.0;
+  double totE = _Protocol.InputRegisters[P125_EAC_TOTAL].value * _Protocol.InputRegisters[P125_EAC_TOTAL].multiplier * 1000.0;
+  double uac_l1 = _Protocol.InputRegisters[P125_VAC1].value * _Protocol.InputRegisters[P125_VAC1].multiplier;
+  double uac_l2 = _Protocol.InputRegisters[P125_VAC2].value * _Protocol.InputRegisters[P125_VAC2].multiplier;
+  double uac_l3 = _Protocol.InputRegisters[P125_VAC3].value * _Protocol.InputRegisters[P125_VAC3].multiplier;
+  double iac_l1 = _Protocol.InputRegisters[P125_IAC1].value * _Protocol.InputRegisters[P125_IAC1].multiplier;
+  double iac_l2 = _Protocol.InputRegisters[P125_IAC2].value * _Protocol.InputRegisters[P125_IAC2].multiplier;
+  double iac_l3 = _Protocol.InputRegisters[P125_IAC3].value * _Protocol.InputRegisters[P125_IAC3].multiplier;
+  double pac_l1 = _Protocol.InputRegisters[P125_PAC1].value * _Protocol.InputRegisters[P125_PAC1].multiplier;
+  double pac_l2 = _Protocol.InputRegisters[P125_PAC2].value * _Protocol.InputRegisters[P125_PAC2].multiplier;
+  double pac_l3 = _Protocol.InputRegisters[P125_PAC3].value * _Protocol.InputRegisters[P125_PAC3].multiplier;
 #else
   double pac = 0, fac = 0, uac = 0, iac = 0, pdc = 0, udc = 0, idc = 0, dayE = 0, totE = 0;
   double uac_l1 = 0, uac_l2 = 0, uac_l3 = 0;
@@ -828,6 +884,11 @@ void Growatt::CreatePowerFlowJson(char *Buffer) {
   double pdc = _Protocol.InputRegisters[P124_INPUT_POWER].value * _Protocol.InputRegisters[P124_INPUT_POWER].multiplier;
   double dayE = _Protocol.InputRegisters[P124_EAC_TODAY].value * _Protocol.InputRegisters[P124_EAC_TODAY].multiplier * 1000.0;
   double totE = _Protocol.InputRegisters[P124_EAC_TOTAL].value * _Protocol.InputRegisters[P124_EAC_TOTAL].multiplier * 1000.0;
+#elif GROWATT_MODBUS_VERSION == 125
+  double pac = _Protocol.InputRegisters[P125_PAC].value * _Protocol.InputRegisters[P125_PAC].multiplier;
+  double pdc = _Protocol.InputRegisters[P125_INPUT_POWER].value * _Protocol.InputRegisters[P125_INPUT_POWER].multiplier;
+  double dayE = _Protocol.InputRegisters[P125_EAC_TODAY].value * _Protocol.InputRegisters[P125_EAC_TODAY].multiplier * 1000.0;
+  double totE = _Protocol.InputRegisters[P125_EAC_TOTAL].value * _Protocol.InputRegisters[P125_EAC_TOTAL].multiplier * 1000.0;
 #else
   double pac = 0, pdc = 0, dayE = 0, totE = 0;
 #endif
