@@ -407,6 +407,7 @@ void setup()
 
     digitalWrite(LED_BL, 1);
     // Set a timeout so the ESP doesn't hang waiting to be configured, for instance after a power failure
+    wm.setAPStaticIPConfig(IPAddress(192,168,4,1), IPAddress(192,168,4,1), IPAddress(255,255,255,0));
     wm.setConfigPortalTimeout(CONFIG_PORTAL_MAX_TIME_SECONDS);
     // Automatically connect using saved credentials,
     // if connection fails, it starts an access point with the specified name ("GrowattConfig")
@@ -541,6 +542,7 @@ void StartConfigAccessPoint(void)
     String Text;
     Text = "Configuration access point started ...\r\nConnect to Wifi: \"GrowattConfig\" with your password (default: \"growsolar\") and visit 192.168.4.1\r\nThe Stick will automatically go back to normal operation after " + String(CONFIG_PORTAL_MAX_TIME_SECONDS) + " seconds";
     httpServer.send(200, "text/plain", Text);
+    wm.setAPStaticIPConfig(IPAddress(192,168,4,1), IPAddress(192,168,4,1), IPAddress(255,255,255,0));
     StartedConfigAfterBoot = true;
 }
 
