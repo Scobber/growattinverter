@@ -8,6 +8,7 @@ void init_growatt125(sProtocolDefinition_t &Protocol) {
 
     // address, value, size, name, multiplier, unit, frontend, plot
     Protocol.InputFragmentCount = 4;
+    Protocol.InputFastFragmentCount = 2;
     Protocol.InputReadFragments[0] = sGrowattReadFragment_t{0, 64};
     Protocol.InputReadFragments[1] = sGrowattReadFragment_t{64, 64};
     Protocol.InputReadFragments[2] = sGrowattReadFragment_t{128, 64};
@@ -15,6 +16,7 @@ void init_growatt125(sProtocolDefinition_t &Protocol) {
 
     Protocol.HoldingRegisterCount = 0;
     Protocol.HoldingFragmentCount = 0;
+    Protocol.HoldingFastFragmentCount = 0;
 
     // FEAGMENT 1: BEGIN
     Protocol.InputRegisters[P125_I_STATUS] = sGrowattModbusReg_t{0, 0, SIZE_16BIT, "InverterStatus", 1, NONE, true, false}; // #1

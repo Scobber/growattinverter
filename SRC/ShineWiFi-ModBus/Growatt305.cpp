@@ -21,8 +21,10 @@ void init_growatt305(sProtocolDefinition_t &Protocol) {
     Protocol.InputRegisters[P305_TEMPERATURE] = sGrowattModbusReg_t{32, 0, SIZE_16BIT, "Temperature", 0.1, TEMPERATURE, true, false}; // #12
 
     Protocol.InputFragmentCount = 1;
+    Protocol.InputFastFragmentCount = 1;
     Protocol.InputReadFragments[0] = sGrowattReadFragment_t{0, 33};
 
     Protocol.HoldingRegisterCount = 0;
     Protocol.HoldingFragmentCount = 0;
+    Protocol.HoldingFastFragmentCount = 0;
 }

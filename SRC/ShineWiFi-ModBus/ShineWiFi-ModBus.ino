@@ -834,6 +834,7 @@ long ButtonTimer = 0;
 long LEDTimer = 0;
 long RefreshTimer = 0;
 long WifiRetryTimer = 0;
+uint8_t refreshCycle = 0;
 
 void loop()
 {
@@ -927,12 +928,14 @@ void loop()
         if ((WiFi.status() == WL_CONNECTED) && (Inverter.GetWiFiStickType()))
         {
             readoutSucceeded = 0;
+            bool fullRead = (refreshCycle % FULL_READ_INTERVAL) == 0;
+            refreshCycle++;
             while ((u8RetryCounter) && !(readoutSucceeded))
             {
                 #if SIMULATE_INVERTER == 1
                 if (1) // do it always
                 #else
-                if (Inverter.ReadData()) // get new data from inverter
+                if (Inverter.ReadData(fullRead)) // get new data from inverter
                 #endif
                 {
                     WEB_DEBUG_PRINT("ReadData() successful")

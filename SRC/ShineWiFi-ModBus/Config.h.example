@@ -71,6 +71,8 @@
 #define WIFI_RETRY_TIMER 120000 // 120s default
 #define LED_TIMER 500 //  0.5s default
 #define BUTTON_TIMER 500 //  0.5s default
+// Perform a full Modbus read every N refresh cycles
+#define FULL_READ_INTERVAL 10
 
 #if PINGER_SUPPORTED == 1
 #define GATEWAY_IP IPAddress(192, 168, 178, 1)
