@@ -32,7 +32,7 @@ copies or substantial portions of the Software. -->
   <a href="./firmware">Firmware update</a> -
   <a href="./status">Json</a> -
   <a href="./debug">Log</a> -
-  <a href="./StartAp">Start config access point</a> -
+  <a href="./StartAp">Setup</a> -
   <a href="./postCommunicationModbus">RW Modbus</a> -
   <a href="./solar_api/v1/GetInverterRealtimeData.cgi">Fronius Inverter Data</a> -
   <a href="./solar_api/v1/GetInverterInfo.cgi">Fronius Inverter Info</a> -
