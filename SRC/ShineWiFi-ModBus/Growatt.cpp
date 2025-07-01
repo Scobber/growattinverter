@@ -427,6 +427,19 @@ uint8_t Growatt::MapStatusToFronius(uint32_t status) {
   }
 }
 
+const char* Growatt::FroniusStatusToString(uint8_t status) {
+  switch (status) {
+    case 1:
+      return "Waiting";
+    case 7:
+      return "Running";
+    case 16:
+      return "Fault";
+    default:
+      return "Unknown";
+  }
+}
+
 void Growatt::CreateJson(char *Buffer, const char *MacAddress) {
   StaticJsonDocument<2048> doc;
 
@@ -704,7 +717,7 @@ void Growatt::CreateUIJson(char *Buffer) {
   arr.add(320);arr.add("kWh");arr.add(false);
 #endif // SIMULATE_INVERTER
 
-  serializeJson(doc, Buffer, 4096);
+  serializeJson(doc, Buffer, MQTT_MAX_PACKET_SIZE);
 }
 
 void Growatt::CreateFroniusJson(char *Buffer) {
@@ -880,6 +893,7 @@ void Growatt::CreateFroniusJson(char *Buffer) {
   JsonObject devStat = data.createNestedObject("DeviceStatus");
   devStat["ErrorCode"] = 0;
   devStat["StatusCode"] = froniusStatus;
+  devStat["Status"] = FroniusStatusToString(froniusStatus);
   JsonObject pacL1Obj = data.createNestedObject("PAC_L1");
   pacL1Obj["Value"] = pac_l1;
   pacL1Obj["Unit"] = "W";
@@ -1029,6 +1043,7 @@ void Growatt::CreateInverterInfoJson(char *Buffer) {
   inv["PVPower"] = (uint32_t)pdc;
   inv["Show"] = 1;
   inv["StatusCode"] = froniusStatus;
+  inv["Status"] = FroniusStatusToString(froniusStatus);
   inv["UniqueID"] = FRONIUS_SERIAL;
 
   serializeJson(doc, Buffer, MQTT_MAX_PACKET_SIZE);
