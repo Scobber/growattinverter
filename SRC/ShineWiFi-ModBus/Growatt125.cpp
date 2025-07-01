@@ -11,8 +11,8 @@ void init_growatt125(sProtocolDefinition_t &Protocol) {
     Protocol.InputFastFragmentCount = 2;
     Protocol.InputReadFragments[0] = sGrowattReadFragment_t{0, 64};
     Protocol.InputReadFragments[1] = sGrowattReadFragment_t{64, 64};
-    Protocol.InputReadFragments[2] = sGrowattReadFragment_t{128, 64};
-    Protocol.InputReadFragments[3] = sGrowattReadFragment_t{192, 64};
+    Protocol.InputReadFragments[2] = sGrowattReadFragment_t{1009, 55};
+    Protocol.InputReadFragments[3] = sGrowattReadFragment_t{1148, 2};
 
     Protocol.HoldingRegisterCount = 2;
     Protocol.HoldingFragmentCount = 1;
