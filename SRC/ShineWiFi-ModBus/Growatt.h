@@ -34,6 +34,7 @@ class Growatt {
     void CreateLoggerInfoJson(char *Buffer);
     void CreateActiveDeviceInfoJson(char *Buffer);
     static uint8_t MapStatusToFronius(uint32_t status);
+    static const char* FroniusStatusToString(uint8_t status);
   private:
     eDevice_t _eDevice;
     bool _GotData;

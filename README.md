@@ -27,6 +27,7 @@ Implemented Features:
   `/solar_api/v1/GetInverterInfo.cgi`, `/solar_api/v1/GetPowerFlowRealtimeData.fcgi`,
   `/solar_api/v1/GetLoggerInfo.cgi`, and `/solar_api/v1/GetActiveDeviceInfo.cgi`
 * AC phase statistics (L1-L3) are exposed through the Fronius API endpoints
+* Fronius API responses include a textual Status field derived from Growatt status
 * Wifi manager with own access point for initial configuration of Wifi and MQTT server (IP: 192.168.4.1, SSID: GrowattConfig, Pass: growsolar)
 * Currently Growatt v1.24, v1.25 and 3.05 protocols are implemented and can be easily extended/changed to fit anyone's needs
 * Protocol v1.25 allows configuring the inverter export limit via Modbus holding registers; the firmware automatically enables export limiting at 100% on startup
