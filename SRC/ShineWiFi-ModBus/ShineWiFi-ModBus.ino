@@ -177,29 +177,35 @@ void WiFi_Reconnect()
     {
         digitalWrite(LED_GN, 0);
 
-        wm.autoConnect();
+        wm.setEnableConfigPortal(false);  // avoid captive portal on reconnect
+        wm.setConnectTimeout(10);
+        wm.autoConnect();                 // try reconnect using stored creds
 
-        while (WiFi.status() != WL_CONNECTED)
+        uint32_t start = millis();
+        while ((WiFi.status() != WL_CONNECTED) && (millis() - start < 10000))
         {
             delay(200);
-            #if ENABLE_DEBUG_OUTPUT == 1
-                Serial.print("x");
-            #endif
+#if ENABLE_DEBUG_OUTPUT == 1
+            Serial.print("x");
+#endif
             digitalWrite(LED_RT, !digitalRead(LED_RT)); // toggle red led on WiFi (re)connect
         }
 
-        #if ENABLE_DEBUG_OUTPUT == 1
+        if (WiFi.status() == WL_CONNECTED)
+        {
+#if ENABLE_DEBUG_OUTPUT == 1
             Serial.println("");
             WiFi.printDiag(Serial);
             Serial.print("local IP:");
             Serial.println(WiFi.localIP());
             Serial.print("Hostname: ");
             Serial.println(HOSTNAME);
-        #endif
+#endif
 
-        WEB_DEBUG_PRINT("WiFi reconnected")
+            WEB_DEBUG_PRINT("WiFi reconnected")
 
-        digitalWrite(LED_RT, 1);
+            digitalWrite(LED_RT, 1);
+        }
     }
 }
 
