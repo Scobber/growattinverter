@@ -1,6 +1,8 @@
 #ifndef _GROWATT_TYPES_H_
 #define _GROWATT_TYPES_H_
 
+#include <cstring>
+
 typedef enum {
   Undef_stick  = 0,
   ShineWiFi_S  = 1, // Serial DB9-Connector, 9600Bd, Protocol v3.05 (2013)
@@ -44,7 +46,7 @@ typedef enum {
     SIZE_32BIT,
 } RegisterSize_t;
 
-typedef struct {
+typedef struct sGrowattModbusReg_t {
   uint16_t address;
   uint32_t value;
   RegisterSize_t size;
@@ -53,6 +55,17 @@ typedef struct {
   RegisterUnit_t unit;
   bool frontend;
   bool plot;
+
+  sGrowattModbusReg_t() : address(0), value(0), size(SIZE_16BIT), multiplier(1), unit(NONE), frontend(false), plot(false) {
+    name[0] = '\0';
+  }
+
+  sGrowattModbusReg_t(uint16_t a, uint32_t v, RegisterSize_t s, const char *n,
+                       float m, RegisterUnit_t u, bool f, bool p)
+      : address(a), value(v), size(s), multiplier(m), unit(u), frontend(f), plot(p) {
+    strncpy(name, n, sizeof(name));
+    name[sizeof(name) - 1] = '\0';
+  }
 } sGrowattModbusReg_t;
 
 // Growatt limits maximal number of registers that can be polled
