@@ -177,8 +177,10 @@ void WiFi_Reconnect()
     {
         digitalWrite(LED_GN, 0);
 
-        WiFi.disconnect();               // clear current state
-        WiFi.begin();                    // reconnect using stored credentials
+        wm.setEnableConfigPortal(false);  // avoid captive portal on reconnect
+        wm.setConnectTimeout(10);
+        wm.autoConnect();                 // try reconnect using stored creds
+
 
         uint32_t start = millis();
         while ((WiFi.status() != WL_CONNECTED) && (millis() - start < 10000))
