@@ -24,6 +24,7 @@ class Growatt {
     bool ReadHoldingReg(uint16_t adr, uint32_t* result);
     bool ReadHoldingReg(uint16_t adr, uint16_t* result);
     bool WriteHoldingReg(uint16_t adr, uint16_t value);
+    bool ConfigureExportLimit(uint16_t percent);
     void CreateJson(char *Buffer, const char *MacAddress);
     void CreateUIJson(char *Buffer);
     void CreateFroniusJson(char *Buffer);

@@ -37,7 +37,7 @@ e.g. C:\Users\<username>\AppData\Local\Temp\arduino_build_533155
 
 // Provide sensible defaults if the compile-time flags are not set
 #ifndef ENABLE_MODBUS_COMMUNICATION
-#define ENABLE_MODBUS_COMMUNICATION 1
+#define ENABLE_MODBUS_COMMUNICATION 0
 #endif
 
 #ifndef ENABLE_WEB_DEBUG
@@ -89,16 +89,7 @@ uint16_t u16WebMsgNo = 0;
 #if MQTT_SUPPORTED == 1
 #include <PubSubClient.h>
 #endif
-#if ENABLE_MODBUS_COMMUNICATION
-WiFiServer modbusTcpServer(502);
-WiFiClient modbusClient;
-#define INPUT_REGISTER_CACHE_SIZE 1200
-#define HOLDING_REGISTER_CACHE_SIZE 200
-uint16_t inputRegisterCache[INPUT_REGISTER_CACHE_SIZE];
-#define MODBUS_PDU_MAX 253
-uint16_t holdingRegisterCache[HOLDING_REGISTER_CACHE_SIZE];
 
-#endif
 
 #include "Growatt.h"
 bool StartedConfigAfterBoot = false;
@@ -230,128 +221,7 @@ void InverterReconnect(void)
     #endif
 }
 
-#if ENABLE_MODBUS_COMMUNICATION
-void updateModbusCache()
-{
-    for (int i = 0; i < Inverter._Protocol.InputRegisterCount; i++)
-    {
-        uint16_t adr = Inverter._Protocol.InputRegisters[i].address;
-        uint32_t val = Inverter._Protocol.InputRegisters[i].value;
-        if (Inverter._Protocol.InputRegisters[i].size == SIZE_16BIT)
-        {
-            if (adr < INPUT_REGISTER_CACHE_SIZE)
-                inputRegisterCache[adr] = (uint16_t)val;
-        }
-        else
-        {
-            if (adr + 1 < INPUT_REGISTER_CACHE_SIZE)
-            {
-                inputRegisterCache[adr] = (uint16_t)(val >> 16);
-                inputRegisterCache[adr + 1] = (uint16_t)(val & 0xFFFF);
-            }
-        }
-    }
 
-    for (int i = 0; i < Inverter._Protocol.HoldingRegisterCount; i++)
-    {
-        uint16_t adr = Inverter._Protocol.HoldingRegisters[i].address;
-        uint32_t val = Inverter._Protocol.HoldingRegisters[i].value;
-        if (Inverter._Protocol.HoldingRegisters[i].size == SIZE_16BIT)
-        {
-            if (adr < HOLDING_REGISTER_CACHE_SIZE)
-                holdingRegisterCache[adr] = (uint16_t)val;
-        }
-        else
-        {
-            if (adr + 1 < HOLDING_REGISTER_CACHE_SIZE)
-            {
-                holdingRegisterCache[adr] = (uint16_t)(val >> 16);
-                holdingRegisterCache[adr + 1] = (uint16_t)(val & 0xFFFF);
-            }
-        }
-    }
-}
-#endif
-
-#if ENABLE_MODBUS_COMMUNICATION
-void handleModbusTcp()
-{
-    if (!modbusClient || !modbusClient.connected())
-    {
-        modbusClient = modbusTcpServer.available();
-        return;
-    }
-
-    if (!modbusClient.available())
-        return;
-
-    uint8_t mbap[7];
-    if (modbusClient.readBytes(mbap, 7) != 7)
-        return;
-
-    uint16_t pduLen = ((uint16_t)mbap[4] << 8) | mbap[5];
-    if (pduLen < 2 || pduLen > MODBUS_PDU_MAX)
-        return;
-
-    uint8_t pdu[MODBUS_PDU_MAX];
-
-    if (modbusClient.readBytes(pdu, pduLen) != pduLen)
-        return;
-
-    uint8_t function = pdu[0];
-    uint16_t startAdr = ((uint16_t)pdu[1] << 8) | pdu[2];
-    uint16_t quantity = ((uint16_t)pdu[3] << 8) | pdu[4];
-
-    uint8_t response[260];
-    response[0] = mbap[0];
-    response[1] = mbap[1];
-    response[2] = 0;
-    response[3] = 0;
-    response[6] = mbap[6];
-
-    const uint16_t *cache = NULL;
-    uint16_t cacheSize = 0;
-
-    if (function == 0x03)
-    {
-        cache = holdingRegisterCache;
-        cacheSize = HOLDING_REGISTER_CACHE_SIZE;
-    }
-    else if (function == 0x04)
-    {
-        cache = inputRegisterCache;
-        cacheSize = INPUT_REGISTER_CACHE_SIZE;
-    }
-
-    if (cache && (startAdr + quantity) <= cacheSize)
-    {
-        response[7] = function;
-        response[8] = quantity * 2;
-        for (uint16_t i = 0; i < quantity; i++)
-        {
-            uint16_t val = cache[startAdr + i];
-            response[9 + i * 2] = val >> 8;
-            response[10 + i * 2] = val & 0xFF;
-        }
-        uint16_t pdulen = 2 + quantity * 2; // fc + bytecount + data
-        uint16_t mbapLen = pdulen + 1;       // unit + pdu
-        response[4] = mbapLen >> 8;
-        response[5] = mbapLen & 0xFF;
-#if ENABLE_DEBUG_OUTPUT == 1
-        Serial.printf("MBTCP FC=%02X adr=%u qty=%u\n", function, startAdr, quantity);
-#endif
-        modbusClient.write(response, 7 + pdulen);
-    }
-    else
-    {
-        response[7] = function | 0x80;
-        response[8] = 0x02; // illegal data address
-        response[4] = 0;
-        response[5] = 3; // unit + exception = 3 bytes
-        modbusClient.write(response, 9);
-    }
-}
-#endif
 
 // -------------------------------------------------------
 // Check the Mqtt status and reconnect if necessary
@@ -583,11 +453,6 @@ void setup()
         MqttClient.setServer(mqttserver.c_str(), port);
     #endif
     
-    #if ENABLE_MODBUS_COMMUNICATION
-    modbusTcpServer.begin();
-    modbusTcpServer.setNoDelay(true); // Optional: reduce latency
-    Serial.println("✅ Modbus TCP server started on port 502");
-    #endif
 
     httpServer.on("/status", SendJsonSite);
     httpServer.on("/uistatus", SendUiJsonSite);
@@ -607,6 +472,9 @@ void setup()
 
     Inverter.InitProtocol();
     InverterReconnect();
+#if GROWATT_MODBUS_VERSION == 125
+    Inverter.ConfigureExportLimit(100);
+#endif
 
     httpUpdater.setup(&httpServer, update_path, UPDATE_USER, UPDATE_PASSWORD);
     httpServer.begin();
@@ -701,19 +569,6 @@ void SendPostSite(void)
     httpServer.sendContent("<select name=\"registerType\"><option value=\"I\" selected>Input Register</option><option value=\"H\">Holding Register</option></select></br>");
     httpServer.sendContent("<input type=\"submit\" value=\"Go\"></form>");
 
-    httpServer.sendContent("<h3>Input Register Cache</h3><table border=\"1\"><tr><th>Register</th><th>Value</th></tr>");
-    for (int i = 0; i < INPUT_REGISTER_CACHE_SIZE; i++)
-    {
-        httpServer.sendContent("<tr><td>" + String(i) + "</td><td>" + String(inputRegisterCache[i]) + "</td></tr>");
-    }
-    httpServer.sendContent("</table>");
-
-    httpServer.sendContent("<h3>Holding Register Cache</h3><table border=\"1\"><tr><th>Register</th><th>Value</th></tr>");
-    for (int i = 0; i < HOLDING_REGISTER_CACHE_SIZE; i++)
-    {
-        httpServer.sendContent("<tr><td>" + String(i) + "</td><td>" + String(holdingRegisterCache[i]) + "</td></tr>");
-    }
-    httpServer.sendContent("</table>");
 
     httpServer.sendContent("<h3>Input Registers</h3><table border=\"1\"><tr><th>Name</th><th>Address</th><th>Value</th></tr>");
     for (int i = 0; i < Inverter._Protocol.InputRegisterCount; i++)
@@ -851,9 +706,6 @@ void loop()
 
     long now = millis();
     char readoutSucceeded;
-    #if ENABLE_MODBUS_COMMUNICATION
-    handleModbusTcp();
-    #endif
 
     if ((now - ButtonTimer) > BUTTON_TIMER)
     {
@@ -949,9 +801,6 @@ void loop()
                     u16PacketCnt++;
                     u8RetryCounter = NUM_OF_RETRIES;
 
-#if ENABLE_MODBUS_COMMUNICATION
-                    updateModbusCache();
-#endif
 
                     // Create JSON string
                     JsonString[0] = '\0';
