@@ -6,7 +6,7 @@
 // NOTE: my inverter (SPH4-10KTL3 BH-UP) only manages to read 64 registers in one read!
 void init_growatt124(sProtocolDefinition_t &Protocol) {
     // definition of input registers
-    Protocol.InputRegisterCount = 52;
+    Protocol.InputRegisterCount = 54;
     // address, value, size, name, multiplier, unit, frontend, plot
     // FEAGMENT 1: BEGIN
     Protocol.InputRegisters[P124_I_STATUS] = sGrowattModbusReg_t{0, 0, SIZE_16BIT, "InverterStatus", 1, NONE, true, false}; // #1
@@ -73,13 +73,16 @@ void init_growatt124(sProtocolDefinition_t &Protocol) {
     Protocol.InputRegisters[P124_ECHARGE_TOTAL] = sGrowattModbusReg_t{1058, 0, SIZE_32BIT, "ChargeEnergyTotal", 0.1, POWER_KWH, true, false}; // #50
     Protocol.InputRegisters[P124_ETOLOCALLOAD_TODAY] = sGrowattModbusReg_t{1060, 0, SIZE_32BIT, "LocalLoadEnergyToday", 0.1, POWER_KWH, true, false}; // #51
     Protocol.InputRegisters[P124_ETOLOCALLOAD_TOTAL] = sGrowattModbusReg_t{1062, 0, SIZE_32BIT, "LocalLoadEnergyTotal", 0.1, POWER_KWH, true, false}; // #52
+    Protocol.InputRegisters[P124_EXPORT_LIMIT_ENABLED] = sGrowattModbusReg_t{1148, 0, SIZE_16BIT, "ExportLimitEnabled", 1, NONE, true, false}; // #53
+    Protocol.InputRegisters[P124_EXPORT_LIMIT_PERCENT] = sGrowattModbusReg_t{1149, 0, SIZE_16BIT, "ExportLimitPercent", 0.1, PRECENTAGE, true, false}; // #54
     // FEAGMENT 3: END
 
-    Protocol.InputFragmentCount = 3;
+    Protocol.InputFragmentCount = 4;
     Protocol.InputFastFragmentCount = 2;
     Protocol.InputReadFragments[0] = sGrowattReadFragment_t{0, 49};
     Protocol.InputReadFragments[1] = sGrowattReadFragment_t{53, 43};
     Protocol.InputReadFragments[2] = sGrowattReadFragment_t{1009, 55};
+    Protocol.InputReadFragments[3] = sGrowattReadFragment_t{1148, 2};
 
     Protocol.HoldingRegisterCount = 0;
     Protocol.HoldingFragmentCount = 0;

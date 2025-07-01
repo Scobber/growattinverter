@@ -442,8 +442,6 @@ void Growatt::CreateJson(char *Buffer, const char *MacAddress) {
   doc["OperatingTime"] = 123456;
   doc["Temperature"] = 21.12;
   doc["AccumulatedEnergy"] = 320;
-  doc["EnergyToday"] = 0.3;
-  doc["EnergyToday"] = 0.3;
 #endif // SIMULATE_INVERTER
   doc["Mac"] = MacAddress;
   doc["Cnt"] = _PacketCnt;
@@ -687,8 +685,6 @@ void Growatt::CreateUIJson(char *Buffer) {
   arr.add(21.12);arr.add("C");arr.add(false);
   arr = doc.createNestedArray("AccumulatedEnergy");
   arr.add(320);arr.add("kWh");arr.add(false);
-  arr = doc.createNestedArray("EnergyToday");
-  arr.add(0.3);arr.add("kWh");arr.add(false);
 #endif // SIMULATE_INVERTER
 
   serializeJson(doc, Buffer, 4096);
