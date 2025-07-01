@@ -270,12 +270,20 @@ bool Growatt::ReadHoldingReg(uint16_t adr, uint16_t* result) {
    * @param result pointer to the result
    * @returns true if successful
    */
-    uint8_t res = Modbus.readHoldingRegisters(adr, 1);
-    if (res == Modbus.ku8MBSuccess) {
-        *result = Modbus.getResponseBuffer(0);
-        return true;
+  uint8_t res = Modbus.readHoldingRegisters(adr, 1);
+  if (res == Modbus.ku8MBSuccess) {
+    uint16_t val = Modbus.getResponseBuffer(0);
+    *result = val;
+    for (int i = 0; i < _Protocol.HoldingRegisterCount; i++) {
+      if (_Protocol.HoldingRegisters[i].address == adr &&
+          _Protocol.HoldingRegisters[i].size == SIZE_16BIT) {
+        _Protocol.HoldingRegisters[i].value = val;
+        break;
+      }
     }
-    return false;
+    return true;
+  }
+  return false;
 }
 
 bool Growatt::ReadHoldingReg(uint16_t adr, uint32_t* result) {
@@ -285,12 +293,21 @@ bool Growatt::ReadHoldingReg(uint16_t adr, uint32_t* result) {
    * @param result pointer to the result
    * @returns true if successful
    */
-    uint8_t res = Modbus.readHoldingRegisters(adr, 2);
-    if (res == Modbus.ku8MBSuccess) {
-        *result = (Modbus.getResponseBuffer(0) << 16) + Modbus.getResponseBuffer(1);
-        return true;
+  uint8_t res = Modbus.readHoldingRegisters(adr, 2);
+  if (res == Modbus.ku8MBSuccess) {
+    uint32_t val = (Modbus.getResponseBuffer(0) << 16) +
+                   Modbus.getResponseBuffer(1);
+    *result = val;
+    for (int i = 0; i < _Protocol.HoldingRegisterCount; i++) {
+      if (_Protocol.HoldingRegisters[i].address == adr &&
+          _Protocol.HoldingRegisters[i].size == SIZE_32BIT) {
+        _Protocol.HoldingRegisters[i].value = val;
+        break;
+      }
     }
-    return false;
+    return true;
+  }
+  return false;
 }
 
 bool Growatt::WriteHoldingReg(uint16_t adr, uint16_t value) {
@@ -332,12 +349,20 @@ bool Growatt::ReadInputReg(uint16_t adr, uint16_t* result) {
    * @param result pointer to the result
    * @returns true if successful
    */
-    uint8_t res = Modbus.readInputRegisters(adr, 1);
-    if (res == Modbus.ku8MBSuccess) {
-        *result = Modbus.getResponseBuffer(0);
-        return true;
+  uint8_t res = Modbus.readInputRegisters(adr, 1);
+  if (res == Modbus.ku8MBSuccess) {
+    uint16_t val = Modbus.getResponseBuffer(0);
+    *result = val;
+    for (int i = 0; i < _Protocol.InputRegisterCount; i++) {
+      if (_Protocol.InputRegisters[i].address == adr &&
+          _Protocol.InputRegisters[i].size == SIZE_16BIT) {
+        _Protocol.InputRegisters[i].value = val;
+        break;
+      }
     }
-    return false;
+    return true;
+  }
+  return false;
 }
 
 bool Growatt::ReadInputReg(uint16_t adr, uint32_t* result) {
@@ -347,12 +372,21 @@ bool Growatt::ReadInputReg(uint16_t adr, uint32_t* result) {
    * @param result pointer to the result
    * @returns true if successful
    */
-    uint8_t res = Modbus.readInputRegisters(adr, 2);
-    if (res == Modbus.ku8MBSuccess) {
-        *result = (Modbus.getResponseBuffer(0) << 16) + Modbus.getResponseBuffer(1);
-        return true;
+  uint8_t res = Modbus.readInputRegisters(adr, 2);
+  if (res == Modbus.ku8MBSuccess) {
+    uint32_t val = (Modbus.getResponseBuffer(0) << 16) +
+                   Modbus.getResponseBuffer(1);
+    *result = val;
+    for (int i = 0; i < _Protocol.InputRegisterCount; i++) {
+      if (_Protocol.InputRegisters[i].address == adr &&
+          _Protocol.InputRegisters[i].size == SIZE_32BIT) {
+        _Protocol.InputRegisters[i].value = val;
+        break;
+      }
     }
-    return false;
+    return true;
+  }
+  return false;
 }
 
 double Growatt::_round2(double value) {
