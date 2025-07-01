@@ -46,7 +46,7 @@ typedef enum {
     SIZE_32BIT,
 } RegisterSize_t;
 
-typedef struct {
+typedef struct sGrowattModbusReg_t {
   uint16_t address;
   uint32_t value;
   RegisterSize_t size;
