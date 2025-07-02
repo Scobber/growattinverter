@@ -1,0 +1,81 @@
+#ifndef __CONFIG_H__
+#define __CONFIG_H__
+// ---------------------------------------------------------------
+// Build configuration area start
+// ---------------------------------------------------------------
+
+// Define used modbus version used by your invertor here. Currently
+// only 120 (v1.20), 124 (v1.24) and 305 (v3.05) versions are supported.
+// New protocols can be easily defined by adding new Growatt<version>.cpp/h
+// files and then specifying the protocol there. See existing procol files
+// for reference.
+#define GROWATT_MODBUS_VERSION 124
+
+// Setting this define to 0 will disable the MQTT functionality
+#define MQTT_SUPPORTED 1
+// Define the MQTT max packet size here. This only needs to be done for sake of
+// ArduinoIDE compatibility. PlatformIO sets the MQTT_MAX_PACKET_SIZE in platformio.ini
+#ifndef MQTT_MAX_PACKET_SIZE
+#define MQTT_MAX_PACKET_SIZE 4096
+#endif
+
+// Fronius emulation settings
+#define FRONIUS_DEVICE_TYPE 122
+#define FRONIUS_SERIAL "GW-GROWATT-EMU"
+
+// Setting this define to 1 will ping the default gateway periodically
+// if the ping is not successful, the wifi connection will be reestablished
+#define PINGER_SUPPORTED 0
+
+// Setting this define to 1 will enable the debug output via the serial port.
+// The serial port is the same used for the communication to the inverter.
+// Enabling this feature can cause problems with the inverter communication!
+// For ShineWiFi-S everything seems to work perfect even though this flag is set
+#define ENABLE_DEBUG_OUTPUT 1
+
+// Setting this define to 1 will enable a web page (<ip>/debug) where debug messages can be displayed
+// Enabling this option is useful for troubleshooting
+#define ENABLE_WEB_DEBUG 1
+
+// Setting this flag to 1 will simulate the inverter
+// This could be helpful if it is night and the inverter is not working or
+// during development where the stick is not connected to the inverter
+// if Simulating the Inverter we've to set a Device Type this could be ShineWiFi_X or ShineWiFi_S
+#define SIMULATE_INVERTER 0
+#define SIMULATE_DEVICE ShineWiFi_X
+
+// Data of the Wifi access point
+// Default IP 192.168.4.1
+// Hold down the Button for a few seconds to enter Access Point mode
+#define HOSTNAME          "Growatt"
+#define APPassword        "growsolar"
+
+// Username and password for firmware update
+#define UPDATE_USER       "admin"
+#define UPDATE_PASSWORD   "admin"
+
+// Define a condition for starting the Wifi Manager
+// On Growatt devices the Pushbutton is connected to the ADC Pin (A0) and pulled to GND when pressed
+#define AP_BUTTON_PRESSED ( analogRead(A0) < 50 )
+// For generic EPS8622 boards you can use a digital pin of your choice
+// #define AP_BUTTON_PRESSED ( digitalRead(1) == HIGH )
+// For boards without any button you can detect double resets with the Double reset detector by setting this to 1
+#define ENABLE_DOUBLE_RESET 0
+
+// Timer definitions:
+//    REFRESH_TIMER: Modbus polling rate [ms]
+//    RETRY_TIMER: Determines the time between reconnection [ms]
+//    LED_TIMER: Led blinking rate [ms]
+//    BUTTON_TIMER: enter config mode after 5*BUTTON_TIMER [ms]
+#define REFRESH_TIMER 5000 // 5s default
+#define WIFI_RETRY_TIMER 120000 // 120s default
+#define LED_TIMER 500 //  0.5s default
+#define BUTTON_TIMER 500 //  0.5s default
+// Perform a full Modbus read every N refresh cycles
+#define FULL_READ_INTERVAL 10
+
+#if PINGER_SUPPORTED == 1
+#define GATEWAY_IP IPAddress(192, 168, 178, 1)
+#endif
+
+#endif // __CONFIG_H__
