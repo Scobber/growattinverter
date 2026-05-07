@@ -24,6 +24,7 @@
 #endif
 
 ModbusMaster Modbus;
+static StaticJsonDocument<MQTT_MAX_PACKET_SIZE + 2048> gCreateJsonDoc;
 
 static const char *unitToText(RegisterUnit_t unit) {
   switch (unit) {
@@ -659,7 +660,7 @@ const char* Growatt::FroniusStatusToString(uint8_t status) {
 }
 
 void Growatt::CreateJson(char *Buffer, const char *MacAddress) {
-  static DynamicJsonDocument doc(MQTT_MAX_PACKET_SIZE + 2048);
+  StaticJsonDocument<MQTT_MAX_PACKET_SIZE + 2048> &doc = gCreateJsonDoc;
   doc.clear();
   #if MQTT_INCLUDE_UNITS == 1
   JsonObject units = doc.createNestedObject("units");
