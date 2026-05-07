@@ -338,7 +338,7 @@ String getId()
     uint64_t id = ESP.getEfuseMac();
     #endif
 
-    return String("Growatt"+id);
+    return String("Growatt") + String(id);
 }
 
 void setup()
