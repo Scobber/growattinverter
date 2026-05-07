@@ -18,6 +18,10 @@ Implemented Features:
 * Built-in simple Webserver
 * The inverter is queried using Modbus Protocol
 * The data received will be transmitted by MQTT to a server of your choice.
+  * Main JSON topic now supports optional timestamp, units map and device metadata
+  * Optional per-register topics under `<base>/input/<name>` and `<base>/holding/<name>`
+  * Optional MQTT command channel `<base>/set/<HoldingRegisterName>` for holding-register writes with ACK at `<base>/set/ack`
+  * Optional Home Assistant MQTT discovery publishing
 * The data received is also provied as JSON
 * Show a simple live graph visualization  (`http://<ip>`) with help from highcharts.com
 * It supports convenient OTA firmware update (`http://<ip>/firmware`)
@@ -142,6 +146,7 @@ If the total energy is 0.199 kWh before sunset, the totoal enrgy will be reset t
 * Interface for register read/write over web interface added
 * MQTT can be turned off by compiler switch
 * WiFi connection can be reset if a known IP can not be pinged (optional)
+* Optional Modbus TCP server support (FC03/FC04/FC06/FC16) over WiFi using cached register data
 
 @BeoQ Thanks for your investigations
 
@@ -174,4 +179,3 @@ If the total energy is 0.199 kWh before sunset, the totoal enrgy will be reset t
 * UI changes:
 	* Ui is generated dynamically based on the JSON provided.
 	* Graph is now able to plot multiple values
-

@@ -8,6 +8,7 @@
 #ifndef __CONFIG_H__
 #error Please rename Config.h.example to Config.h
 #endif
+#include <PubSubClient.h>
 #include <time.h>
 
 #if GROWATT_MODBUS_VERSION == 120
@@ -23,6 +24,33 @@
 #endif
 
 ModbusMaster Modbus;
+
+static const char *unitToText(RegisterUnit_t unit) {
+  switch (unit) {
+    case POWER_W: return "W";
+    case POWER_KWH: return "kWh";
+    case VOLTAGE: return "V";
+    case CURRENT: return "A";
+    case SECONDS: return "s";
+    case PRECENTAGE: return "%";
+    case FREQUENCY: return "Hz";
+    case TEMPERATURE: return "C";
+    case VA: return "VA";
+    default: return "";
+  }
+}
+
+static const char *haDeviceClass(RegisterUnit_t unit) {
+  switch (unit) {
+    case POWER_W: return "power";
+    case POWER_KWH: return "energy";
+    case VOLTAGE: return "voltage";
+    case CURRENT: return "current";
+    case TEMPERATURE: return "temperature";
+    case FREQUENCY: return "frequency";
+    default: return "";
+  }
+}
 
 // Constructor
 Growatt::Growatt() {
@@ -319,6 +347,13 @@ bool Growatt::WriteHoldingReg(uint16_t adr, uint16_t value) {
    */
     uint8_t res = Modbus.writeSingleRegister(adr, value);
     if (res == Modbus.ku8MBSuccess) {
+        for (int i = 0; i < _Protocol.HoldingRegisterCount; i++) {
+          if (_Protocol.HoldingRegisters[i].address == adr &&
+              _Protocol.HoldingRegisters[i].size == SIZE_16BIT) {
+            _Protocol.HoldingRegisters[i].value = value;
+            break;
+          }
+        }
         return true;
     }
     return false;
@@ -339,6 +374,152 @@ bool Growatt::ConfigureExportLimit(uint16_t percent) {
   (void)percent;
   return false;
 #endif
+}
+
+bool Growatt::FindHoldingRegisterByName(const char *name, sGrowattModbusReg_t *result) {
+  for (int i = 0; i < _Protocol.HoldingRegisterCount; i++) {
+    if (strcmp(_Protocol.HoldingRegisters[i].name, name) == 0) {
+      if (result != nullptr) {
+        *result = _Protocol.HoldingRegisters[i];
+      }
+      return true;
+    }
+  }
+  return false;
+}
+
+bool Growatt::HasHoldingRegisterAddress(uint16_t address) {
+  for (int i = 0; i < _Protocol.HoldingRegisterCount; i++) {
+    const sGrowattModbusReg_t &reg = _Protocol.HoldingRegisters[i];
+    if (reg.size == SIZE_16BIT && reg.address == address) {
+      return true;
+    }
+    if (reg.size == SIZE_32BIT && (reg.address == address || reg.address + 1 == address)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool Growatt::IsHoldingRegisterWriteAddress(uint16_t address) {
+  for (int i = 0; i < _Protocol.HoldingRegisterCount; i++) {
+    const sGrowattModbusReg_t &reg = _Protocol.HoldingRegisters[i];
+    if (reg.size == SIZE_16BIT && reg.address == address) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool Growatt::GetInputWordByAddress(uint16_t address, uint16_t *value) {
+  for (int i = 0; i < _Protocol.InputRegisterCount; i++) {
+    const sGrowattModbusReg_t &reg = _Protocol.InputRegisters[i];
+    if (reg.size == SIZE_16BIT && reg.address == address) {
+      *value = reg.value & 0xFFFF;
+      return true;
+    }
+    if (reg.size == SIZE_32BIT) {
+      if (reg.address == address) {
+        *value = (reg.value >> 16) & 0xFFFF;
+        return true;
+      }
+      if ((uint16_t)(reg.address + 1) == address) {
+        *value = reg.value & 0xFFFF;
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+bool Growatt::GetHoldingWordByAddress(uint16_t address, uint16_t *value) {
+  for (int i = 0; i < _Protocol.HoldingRegisterCount; i++) {
+    const sGrowattModbusReg_t &reg = _Protocol.HoldingRegisters[i];
+    if (reg.size == SIZE_16BIT && reg.address == address) {
+      *value = reg.value & 0xFFFF;
+      return true;
+    }
+    if (reg.size == SIZE_32BIT) {
+      if (reg.address == address) {
+        *value = (reg.value >> 16) & 0xFFFF;
+        return true;
+      }
+      if ((uint16_t)(reg.address + 1) == address) {
+        *value = reg.value & 0xFFFF;
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+void Growatt::PublishMqttRegisters(PubSubClient &client, const String &baseTopic) {
+  char payload[48];
+  for (int i = 0; i < _Protocol.InputRegisterCount; i++) {
+    const sGrowattModbusReg_t &reg = _Protocol.InputRegisters[i];
+    double scaled = reg.value * reg.multiplier;
+    if (reg.multiplier == (int)reg.multiplier) {
+      snprintf(payload, sizeof(payload), "%.0f", scaled);
+    } else {
+      snprintf(payload, sizeof(payload), "%.2f", _round2(scaled));
+    }
+    String topic = baseTopic + "/input/" + reg.name;
+    client.publish(topic.c_str(), payload, MQTT_RETAIN == 1);
+  }
+
+  for (int i = 0; i < _Protocol.HoldingRegisterCount; i++) {
+    const sGrowattModbusReg_t &reg = _Protocol.HoldingRegisters[i];
+    double scaled = reg.value * reg.multiplier;
+    if (reg.multiplier == (int)reg.multiplier) {
+      snprintf(payload, sizeof(payload), "%.0f", scaled);
+    } else {
+      snprintf(payload, sizeof(payload), "%.2f", _round2(scaled));
+    }
+    String topic = baseTopic + "/holding/" + reg.name;
+    client.publish(topic.c_str(), payload, MQTT_RETAIN == 1);
+  }
+}
+
+void Growatt::PublishHomeAssistantDiscovery(PubSubClient &client, const String &discoveryPrefix, const String &baseTopic, const String &deviceId, const String &macAddress) {
+  StaticJsonDocument<1024> doc;
+  char payload[1024];
+
+  auto publishReg = [&](const sGrowattModbusReg_t &reg, const char *scope) {
+    doc.clear();
+    String uniqueId = deviceId + "_" + scope + "_" + reg.name;
+    String stateTopic = baseTopic + "/" + scope + "/" + reg.name;
+    String configTopic = discoveryPrefix + "/sensor/" + deviceId + "/" + reg.name + "/config";
+
+    doc["name"] = reg.name;
+    doc["state_topic"] = stateTopic;
+    doc["unique_id"] = uniqueId;
+    doc["state_class"] = "measurement";
+    const char *unit = unitToText(reg.unit);
+    if (strlen(unit) > 0) {
+      doc["unit_of_measurement"] = unit;
+    }
+    const char *deviceClass = haDeviceClass(reg.unit);
+    if (strlen(deviceClass) > 0) {
+      doc["device_class"] = deviceClass;
+    }
+
+    JsonObject device = doc.createNestedObject("device");
+    device["identifiers"] = deviceId;
+    device["manufacturer"] = "Growatt";
+    device["model"] = "ShineWiFi";
+    device["name"] = "Growatt Inverter";
+    device["connections"] = macAddress;
+
+    serializeJson(doc, payload, sizeof(payload));
+    client.publish(configTopic.c_str(), payload, true);
+  };
+
+  for (int i = 0; i < _Protocol.InputRegisterCount; i++) {
+    publishReg(_Protocol.InputRegisters[i], "input");
+  }
+  for (int i = 0; i < _Protocol.HoldingRegisterCount; i++) {
+    publishReg(_Protocol.HoldingRegisters[i], "holding");
+  }
 }
 
 
@@ -475,7 +656,8 @@ const char* Growatt::FroniusStatusToString(uint8_t status) {
 }
 
 void Growatt::CreateJson(char *Buffer, const char *MacAddress) {
-  StaticJsonDocument<2048> doc;
+  DynamicJsonDocument doc(MQTT_MAX_PACKET_SIZE + 2048);
+  JsonObject units = doc.createNestedObject("units");
 
 #if SIMULATE_INVERTER != 1
   for (int i = 0; i < _Protocol.InputRegisterCount; i++) {
@@ -484,6 +666,9 @@ void Growatt::CreateJson(char *Buffer, const char *MacAddress) {
     } else {
       doc[_Protocol.InputRegisters[i].name] = _round2(_Protocol.InputRegisters[i].value * _Protocol.InputRegisters[i].multiplier);
     }
+    #if MQTT_INCLUDE_UNITS == 1
+    units[_Protocol.InputRegisters[i].name] = unitToText(_Protocol.InputRegisters[i].unit);
+    #endif
   }
   for (int i = 0; i < _Protocol.HoldingRegisterCount; i++) {
     if (_Protocol.HoldingRegisters[i].multiplier  == (int)_Protocol.HoldingRegisters[i].multiplier) {
@@ -491,6 +676,9 @@ void Growatt::CreateJson(char *Buffer, const char *MacAddress) {
     } else {
       doc[_Protocol.HoldingRegisters[i].name] = _round2(_Protocol.HoldingRegisters[i].value * _Protocol.HoldingRegisters[i].multiplier);
     }
+    #if MQTT_INCLUDE_UNITS == 1
+    units[_Protocol.HoldingRegisters[i].name] = unitToText(_Protocol.HoldingRegisters[i].unit);
+    #endif
   }
 #else
   #warning simulating the inverter
@@ -506,7 +694,49 @@ void Growatt::CreateJson(char *Buffer, const char *MacAddress) {
   doc["OperatingTime"] = 123456;
   doc["Temperature"] = 21.12;
   doc["AccumulatedEnergy"] = 320;
+  #if MQTT_INCLUDE_UNITS == 1
+  units["DcPower"] = "W";
+  units["DcVoltage"] = "V";
+  units["DcInputCurrent"] = "A";
+  units["AcFreq"] = "Hz";
+  units["AcVoltage"] = "V";
+  units["AcPower"] = "W";
+  units["EnergyToday"] = "kWh";
+  units["EnergyTotal"] = "kWh";
+  units["OperatingTime"] = "s";
+  units["Temperature"] = "C";
+  #endif
 #endif // SIMULATE_INVERTER
+
+#if MQTT_INCLUDE_UNITS != 1
+  doc.remove("units");
+#endif
+
+#if MQTT_INCLUDE_TIMESTAMP == 1
+  time_t now = time(nullptr);
+  struct tm *tm_info = gmtime(&now);
+  if (tm_info != nullptr) {
+    char ts[30];
+    snprintf(ts, sizeof(ts), "%04d-%02d-%02dT%02d:%02d:%02d+00:00",
+             tm_info->tm_year + 1900, tm_info->tm_mon + 1, tm_info->tm_mday,
+             tm_info->tm_hour, tm_info->tm_min, tm_info->tm_sec);
+    doc["timestamp"] = ts;
+  }
+#endif
+
+  JsonObject device = doc.createNestedObject("device");
+  device["mac"] = MacAddress;
+#if GROWATT_MODBUS_VERSION == 305
+  device["protocol"] = "3.05";
+#elif GROWATT_MODBUS_VERSION == 120
+  device["protocol"] = "1.20";
+#elif GROWATT_MODBUS_VERSION == 124
+  device["protocol"] = "1.24";
+#elif GROWATT_MODBUS_VERSION == 125
+  device["protocol"] = "1.25";
+#else
+  device["protocol"] = "unknown";
+#endif
   doc["Mac"] = MacAddress;
   doc["Cnt"] = _PacketCnt;
   serializeJson(doc, Buffer, MQTT_MAX_PACKET_SIZE);
