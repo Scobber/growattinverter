@@ -508,7 +508,10 @@ void Growatt::PublishHomeAssistantDiscovery(PubSubClient &client, const String &
     device["manufacturer"] = "Growatt";
     device["model"] = "ShineWiFi";
     device["name"] = "Growatt Inverter";
-    device["connections"] = macAddress;
+    JsonArray connections = device.createNestedArray("connections");
+    JsonArray connection = connections.createNestedArray();
+    connection.add("mac");
+    connection.add(macAddress);
 
     serializeJson(doc, payload, sizeof(payload));
     client.publish(configTopic.c_str(), payload, true);
@@ -656,7 +659,8 @@ const char* Growatt::FroniusStatusToString(uint8_t status) {
 }
 
 void Growatt::CreateJson(char *Buffer, const char *MacAddress) {
-  DynamicJsonDocument doc(MQTT_MAX_PACKET_SIZE + 2048);
+  static StaticJsonDocument<MQTT_MAX_PACKET_SIZE + 2048> doc;
+  doc.clear();
   JsonObject units = doc.createNestedObject("units");
 
 #if SIMULATE_INVERTER != 1
