@@ -659,9 +659,11 @@ const char* Growatt::FroniusStatusToString(uint8_t status) {
 }
 
 void Growatt::CreateJson(char *Buffer, const char *MacAddress) {
-  static StaticJsonDocument<MQTT_MAX_PACKET_SIZE + 2048> doc;
+  static DynamicJsonDocument doc(MQTT_MAX_PACKET_SIZE + 2048);
   doc.clear();
+  #if MQTT_INCLUDE_UNITS == 1
   JsonObject units = doc.createNestedObject("units");
+  #endif
 
 #if SIMULATE_INVERTER != 1
   for (int i = 0; i < _Protocol.InputRegisterCount; i++) {
