@@ -1,7 +1,9 @@
 #ifndef _GROWATT_H_
 #define _GROWATT_H_
 
+#include <Arduino.h>
 #include "GrowattTypes.h"
+class PubSubClient;
 
 class Growatt {
   public:
@@ -25,6 +27,13 @@ class Growatt {
     bool ReadHoldingReg(uint16_t adr, uint16_t* result);
     bool WriteHoldingReg(uint16_t adr, uint16_t value);
     bool ConfigureExportLimit(uint16_t percent);
+    void PublishMqttRegisters(PubSubClient &client, const String &baseTopic);
+    void PublishHomeAssistantDiscovery(PubSubClient &client, const String &discoveryPrefix, const String &baseTopic, const String &deviceId, const String &macAddress);
+    bool FindHoldingRegisterByName(const char *name, sGrowattModbusReg_t *result);
+    bool GetInputWordByAddress(uint16_t address, uint16_t *value);
+    bool GetHoldingWordByAddress(uint16_t address, uint16_t *value);
+    bool HasHoldingRegisterAddress(uint16_t address);
+    bool IsHoldingRegisterWriteAddress(uint16_t address);
     void CreateJson(char *Buffer, const char *MacAddress);
     void CreateUIJson(char *Buffer);
     void CreateFroniusJson(char *Buffer);

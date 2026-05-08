@@ -44,6 +44,42 @@ e.g. C:\Users\<username>\AppData\Local\Temp\arduino_build_533155
 #define ENABLE_WEB_DEBUG 0
 #endif
 
+#ifndef MQTT_PUBLISH_PER_REGISTER
+#define MQTT_PUBLISH_PER_REGISTER 0
+#endif
+#ifndef MQTT_INCLUDE_UNITS
+#define MQTT_INCLUDE_UNITS 0
+#endif
+#ifndef MQTT_INCLUDE_TIMESTAMP
+#define MQTT_INCLUDE_TIMESTAMP 0
+#endif
+#ifndef MQTT_SUBSCRIBE_COMMANDS
+#define MQTT_SUBSCRIBE_COMMANDS 0
+#endif
+#ifndef MQTT_HA_DISCOVERY
+#define MQTT_HA_DISCOVERY 0
+#endif
+#ifndef MQTT_HA_DISCOVERY_PREFIX
+#define MQTT_HA_DISCOVERY_PREFIX "homeassistant"
+#endif
+#ifndef MQTT_RETAIN
+#define MQTT_RETAIN 1
+#endif
+#ifndef MQTT_QOS
+#define MQTT_QOS 0
+#endif
+#ifndef MODBUS_TCP_SUPPORTED
+#define MODBUS_TCP_SUPPORTED 0
+#endif
+#ifndef MODBUS_TCP_PORT
+#define MODBUS_TCP_PORT 502
+#endif
+#ifndef MODBUS_TCP_UNIT_ID
+#define MODBUS_TCP_UNIT_ID 1
+#endif
+#ifndef MODBUS_TCP_MAX_CLIENTS
+#define MODBUS_TCP_MAX_CLIENTS 2
+#endif
 
 
 #ifdef ESP8266
@@ -89,9 +125,11 @@ uint16_t u16WebMsgNo = 0;
 #if MQTT_SUPPORTED == 1
 #include <PubSubClient.h>
 #endif
+#include <ArduinoJson.h>
 
 
 #include "Growatt.h"
+#include "ModbusTcpServer.h"
 bool StartedConfigAfterBoot = false;
 #define CONFIG_PORTAL_MAX_TIME_SECONDS 300
 #include <WiFiManager.h> // https://github.com/tzapu/WiFiManager
@@ -127,6 +165,9 @@ PubSubClient MqttClient(espClient);
 long previousConnectTryMillis = 0;
 #endif
 Growatt      Inverter;
+#if MODBUS_TCP_SUPPORTED == 1
+ModbusTcpServer modbusTcpServer;
+#endif
 #ifdef ESP8266
 ESP8266WebServer httpServer(80);
 #elif ESP32
@@ -220,6 +261,75 @@ void InverterReconnect(void)
     #endif
 }
 
+#if MQTT_SUPPORTED == 1
+void MqttPublish(const String &topic, const char *payload, bool retain)
+{
+    (void)MQTT_QOS; // PubSubClient supports QoS 0 for publish
+    MqttClient.publish(topic.c_str(), payload, retain);
+}
+
+void PublishMqttAck(const String &commandTopic, bool success, const char *message)
+{
+    StaticJsonDocument<256> ack;
+    ack["topic"] = commandTopic;
+    ack["success"] = success;
+    ack["message"] = message;
+    char ackPayload[256];
+    serializeJson(ack, ackPayload, sizeof(ackPayload));
+    MqttPublish(mqtttopic + "/set/ack", ackPayload, MQTT_RETAIN == 1);
+}
+
+void MqttCallback(char* topic, byte* payload, unsigned int length)
+{
+    #if MQTT_SUBSCRIBE_COMMANDS != 1
+        (void)topic;
+        (void)payload;
+        (void)length;
+        return;
+    #else
+        String topicStr = String(topic);
+        String prefix = mqtttopic + "/set/";
+        if (!topicStr.startsWith(prefix))
+            return;
+
+        String regName = topicStr.substring(prefix.length());
+        if (regName.length() == 0)
+        {
+            PublishMqttAck(topicStr, false, "missing register name");
+            return;
+        }
+
+        char valueBuf[32];
+        unsigned int copyLen = length < (sizeof(valueBuf) - 1) ? length : (sizeof(valueBuf) - 1);
+        memcpy(valueBuf, payload, copyLen);
+        valueBuf[copyLen] = '\0';
+
+        char *endPtr = nullptr;
+        long valueLong = strtol(valueBuf, &endPtr, 10);
+        if (endPtr == valueBuf || *endPtr != '\0' || valueLong < 0 || valueLong > 65535)
+        {
+            PublishMqttAck(topicStr, false, "invalid value");
+            return;
+        }
+
+        sGrowattModbusReg_t reg;
+        if (!Inverter.FindHoldingRegisterByName(regName.c_str(), &reg))
+        {
+            PublishMqttAck(topicStr, false, "unknown holding register");
+            return;
+        }
+
+        if (!Inverter.WriteHoldingReg(reg.address, (uint16_t)valueLong))
+        {
+            PublishMqttAck(topicStr, false, "modbus write failed");
+            return;
+        }
+
+        PublishMqttAck(topicStr, true, "ok");
+    #endif
+}
+#endif
+
 
 
 // -------------------------------------------------------
@@ -252,12 +362,18 @@ bool MqttReconnect()
         //Run only once every 5 seconds
         previousConnectTryMillis = millis();
         // Attempt to connect with last will
-        if (MqttClient.connect(getId().c_str(), mqttuser.c_str(), mqttpwd.c_str(), mqtttopic.c_str(), 1, 1, "{\"InverterStatus\": -1 }"))
+        if (MqttClient.connect(getId().c_str(), mqttuser.c_str(), mqttpwd.c_str(), mqtttopic.c_str(), MQTT_QOS, MQTT_RETAIN == 1, "{\"InverterStatus\": -1 }"))
         {
             #if ENABLE_DEBUG_OUTPUT == 1
                 Serial.println("connected");
-                return true;
             #endif
+            #if MQTT_SUBSCRIBE_COMMANDS == 1
+                MqttClient.subscribe((mqtttopic + "/set/+").c_str(), MQTT_QOS);
+            #endif
+            #if MQTT_HA_DISCOVERY == 1
+                Inverter.PublishHomeAssistantDiscovery(MqttClient, MQTT_HA_DISCOVERY_PREFIX, mqtttopic, getId(), WiFi.macAddress());
+            #endif
+            return true;
         }
         else
         {
@@ -386,6 +502,7 @@ void setup()
     #if MQTT_SUPPORTED == 1
         // make sure the packet size is set correctly in the library
         MqttClient.setBufferSize(MQTT_MAX_PACKET_SIZE);
+        MqttClient.setCallback(MqttCallback);
 
         custom_mqtt_server = new WiFiManagerParameter("server", "mqtt server", mqttserver.c_str(), 40);
         custom_mqtt_port = new WiFiManagerParameter("port", "mqtt port", mqttport.c_str(), 6);
@@ -475,6 +592,10 @@ void setup()
 #if GROWATT_MODBUS_VERSION == 125
     Inverter.ConfigureExportLimit(100);
 #endif
+
+    #if MODBUS_TCP_SUPPORTED == 1
+        modbusTcpServer.begin(MODBUS_TCP_PORT, &Inverter);
+    #endif
 
     httpUpdater.setup(&httpServer, update_path, UPDATE_USER, UPDATE_PASSWORD);
     httpServer.begin();
@@ -759,6 +880,9 @@ void loop()
     #endif
 
     httpServer.handleClient();
+    #if MODBUS_TCP_SUPPORTED == 1
+        modbusTcpServer.loop();
+    #endif
 
     // Toggle green LED with 1 Hz (alive)
     // ------------------------------------------------------------
@@ -808,8 +932,12 @@ void loop()
                     Inverter.CreateJson(JsonString, WiFi.macAddress().c_str());
 
                     #if MQTT_SUPPORTED == 1
-                    if (MqttClient.connected())
-                        MqttClient.publish(mqtttopic.c_str(), JsonString, true);
+                    if (MqttClient.connected()) {
+                        MqttPublish(mqtttopic, JsonString, MQTT_RETAIN == 1);
+                        #if MQTT_PUBLISH_PER_REGISTER == 1
+                            Inverter.PublishMqttRegisters(MqttClient, mqtttopic);
+                        #endif
+                    }
                     #endif
 
                     digitalWrite(LED_RT, 0); // clear red led if everything is ok
@@ -829,7 +957,7 @@ void loop()
                         sprintf(JsonString, "{\"InverterStatus\": -1 }");
                         #if MQTT_SUPPORTED == 1
                         if (MqttClient.connected())
-                            MqttClient.publish(mqtttopic.c_str(), JsonString, true);
+                            MqttPublish(mqtttopic, JsonString, MQTT_RETAIN == 1);
                         #endif
                         digitalWrite(LED_RT, 1); // set red led in case of error
                     }
