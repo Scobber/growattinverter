@@ -8,6 +8,7 @@
 #ifndef __CONFIG_H__
 #error Please rename Config.h.example to Config.h
 #endif
+#include "version.h"
 #include <time.h>
 
 #if GROWATT_MODBUS_VERSION == 120
@@ -1102,7 +1103,7 @@ void Growatt::CreateLoggerInfoJson(char *Buffer) {
 
   JsonObject body = doc.createNestedObject("Body");
   JsonObject data = body.createNestedObject("LoggerInfo");
-  data["SWVersion"] = "1.0";
+  data["SWVersion"] = FW_VERSION;
   data["HWVersion"] = "1.0";
   data["TimezoneLocation"] = "UTC";
 

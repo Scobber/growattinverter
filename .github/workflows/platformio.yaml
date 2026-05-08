@@ -22,6 +22,17 @@ jobs:
           - nodemcu-32s
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine version
+        id: version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            echo "FW_VERSION=${GITHUB_REF_NAME}" >> "$GITHUB_ENV"
+          else
+            echo "FW_VERSION=$(git rev-parse --short HEAD)" >> "$GITHUB_ENV"
+          fi
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -52,13 +63,19 @@ jobs:
       - name: Build ${{ matrix.environment }}
         run: python -m platformio run -e ${{ matrix.environment }}
 
+      - name: Rename firmware artifacts
+        run: |
+          mkdir -p firmware
+          cp .pio/build/${{ matrix.environment }}/firmware.bin \
+             firmware/firmware-${{ matrix.environment }}-${{ env.FW_VERSION }}.bin
+          cp .pio/build/${{ matrix.environment }}/firmware.elf \
+             firmware/firmware-${{ matrix.environment }}-${{ env.FW_VERSION }}.elf
+
       - name: Upload firmware artifact
         uses: actions/upload-artifact@v4
         with:
           name: firmware-${{ matrix.environment }}
-          path: |
-            .pio/build/${{ matrix.environment }}/firmware.bin
-            .pio/build/${{ matrix.environment }}/firmware.elf
+          path: firmware/
           if-no-files-found: error
 
   release:
@@ -77,5 +94,5 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            dist/**/firmware.bin
-            dist/**/firmware.elf
+            dist/**/*.bin
+            dist/**/*.elf

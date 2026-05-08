@@ -3,6 +3,7 @@ Libs/
 *.obj
 
 SRC/ShineWiFi-ModBus/Config.h
+SRC/ShineWiFi-ModBus/version.h
 
 # PlatformIO
 .pio
