@@ -54,7 +54,7 @@ e.g. C:\Users\<username>\AppData\Local\Temp\arduino_build_533155
 
 
 
-#ifdef ENABLE_DOUBLE_RESET
+#if ENABLE_DOUBLE_RESET == 1
 #define ESP_DRD_USE_LITTLEFS    true
 #define ESP_DRD_USE_EEPROM      false
 #define DRD_TIMEOUT             10
@@ -72,7 +72,6 @@ uint16_t u16WebMsgNo = 0;
 #define WEB_DEBUG_PRINT(s) ;
 #endif
 
-// ---------------------------------------------------------------
 // User configuration area end
 // ---------------------------------------------------------------
 
@@ -89,6 +88,7 @@ uint16_t u16WebMsgNo = 0;
 #if MQTT_SUPPORTED == 1
 #include <PubSubClient.h>
 #endif
+#include <ArduinoJson.h>
 
 
 #include "Growatt.h"
@@ -139,11 +139,24 @@ ESP8266HTTPUpdateServer httpUpdater;
 ESPHTTPUpdateServer httpUpdater;
 #endif
 WiFiManager wm;
-WiFiManagerParameter* custom_mqtt_server = NULL;
-WiFiManagerParameter* custom_mqtt_port = NULL;
-WiFiManagerParameter* custom_mqtt_topic = NULL;
-WiFiManagerParameter* custom_mqtt_user = NULL;
-WiFiManagerParameter* custom_mqtt_pwd = NULL;
+
+typedef enum {
+    BOOT_CONNECTING,
+    NORMAL_MODE,
+    RECONNECTING,
+    CONFIG_PORTAL_MODE
+} RuntimeMode_t;
+
+RuntimeMode_t gRuntimeMode = BOOT_CONNECTING;
+bool gConfigPortalRequested = false;
+uint8_t gReconnectFailures = 0;
+unsigned long gLastConfigPortalMs = 0;
+bool gButtonPortalLatched = false;
+
+const uint8_t WIFI_RECONNECT_FAILS_BEFORE_PORTAL = 3;
+const unsigned long CONFIG_PORTAL_COOLDOWN_MS = 30000;
+const unsigned long WIFI_RECONNECT_ATTEMPT_MS = 4000;
+const uint16_t FAST_CONNECT_TIMEOUT_SECONDS = 12;
 
 const static char* serverfile = "/mqtts";
 const static char* portfile = "/mqttp";
@@ -157,7 +170,131 @@ String mqtttopic = "";
 String mqttuser = "";
 String mqttpwd = "";
 
-char JsonString[MQTT_MAX_PACKET_SIZE] = "{\"InverterStatus\": -1 }";
+char JsonPayload[MQTT_MAX_PACKET_SIZE] = "{\"InverterStatus\": -1 }";
+
+void updateMqttClientServer()
+{
+#if MQTT_SUPPORTED == 1
+    uint16_t port = mqttport.toInt();
+    if (port == 0)
+        port = 1883;
+
+    MqttClient.setServer(mqttserver.c_str(), port);
+#endif
+}
+
+bool enterConfigPortal(const char* reason)
+{
+    gRuntimeMode = CONFIG_PORTAL_MODE;
+    gLastConfigPortalMs = millis();
+    gConfigPortalRequested = false;
+    StartedConfigAfterBoot = false;
+
+    digitalWrite(LED_BL, 1);
+
+#if ENABLE_DEBUG_OUTPUT == 1
+    Serial.print(F("Entering WiFiManager portal: "));
+    Serial.println(reason);
+#endif
+
+    wm.setAPStaticIPConfig(IPAddress(192, 168, 4, 1), IPAddress(192, 168, 4, 1), IPAddress(255, 255, 255, 0));
+    wm.setConfigPortalTimeout(CONFIG_PORTAL_MAX_TIME_SECONDS);
+
+    bool res = wm.startConfigPortal("GrowattConfig");
+
+    digitalWrite(LED_BL, 0);
+
+    if (res && WiFi.status() == WL_CONNECTED)
+    {
+        gRuntimeMode = NORMAL_MODE;
+        gReconnectFailures = 0;
+#if ENABLE_DEBUG_OUTPUT == 1
+        Serial.println(F("Portal connected, back to normal mode"));
+#endif
+        return true;
+    }
+
+    gRuntimeMode = RECONNECTING;
+#if ENABLE_DEBUG_OUTPUT == 1
+    Serial.println(F("Portal exited without WiFi, continuing reconnect mode"));
+#endif
+    return false;
+}
+
+void SendSettingsSite(void)
+{
+    StaticJsonDocument<384> doc;
+    doc["mqttserver"] = mqttserver;
+    doc["mqttport"] = mqttport;
+    doc["mqtttopic"] = mqtttopic;
+    doc["mqttuser"] = mqttuser;
+    doc["mqttpwd"] = mqttpwd;
+    doc["wifiConnected"] = (WiFi.status() == WL_CONNECTED);
+
+    JsonPayload[0] = '\0';
+    serializeJson(doc, JsonPayload, sizeof(JsonPayload));
+    httpServer.send(200, "application/json", JsonPayload);
+}
+
+void HandleSettingsPost(void)
+{
+    if (!httpServer.hasArg("mqttserver") || !httpServer.hasArg("mqttport") || !httpServer.hasArg("mqtttopic") ||
+        !httpServer.hasArg("mqttuser") || !httpServer.hasArg("mqttpwd"))
+    {
+        httpServer.send(400, "text/plain", "Missing settings fields");
+        return;
+    }
+
+    String newServer = httpServer.arg("mqttserver");
+    String newPort = httpServer.arg("mqttport");
+    String newTopic = httpServer.arg("mqtttopic");
+    String newUser = httpServer.arg("mqttuser");
+    String newPwd = httpServer.arg("mqttpwd");
+
+    if (newServer.length() > 40 || newPort.length() > 6 || newTopic.length() > 64 ||
+        newUser.length() > 40 || newPwd.length() > 40)
+    {
+        httpServer.send(400, "text/plain", "Settings value too long");
+        return;
+    }
+
+    uint16_t port = newPort.toInt();
+    if (port == 0)
+    {
+        httpServer.send(400, "text/plain", "Invalid MQTT port");
+        return;
+    }
+
+    mqttserver = newServer;
+    mqttport = newPort;
+    mqtttopic = newTopic;
+    mqttuser = newUser;
+    mqttpwd = newPwd;
+
+    bool saveOk = true;
+    saveOk &= write_to_file(serverfile, mqttserver);
+    saveOk &= write_to_file(portfile, mqttport);
+    saveOk &= write_to_file(topicfile, mqtttopic);
+    saveOk &= write_to_file(userfile, mqttuser);
+    saveOk &= write_to_file(secretfile, mqttpwd);
+
+    updateMqttClientServer();
+
+#if MQTT_SUPPORTED == 1
+    if (MqttClient.connected())
+    {
+        MqttClient.disconnect();
+    }
+#endif
+
+    if (!saveOk)
+    {
+        httpServer.send(500, "text/plain", "Failed to persist settings");
+        return;
+    }
+
+    httpServer.send(200, "text/plain", "Settings saved");
+}
 
 // -------------------------------------------------------
 // Check the WiFi status and reconnect if necessary
@@ -166,14 +303,13 @@ void WiFi_Reconnect()
 {
     if (WiFi.status() != WL_CONNECTED)
     {
+        gRuntimeMode = RECONNECTING;
         digitalWrite(LED_GN, 0);
 
-        wm.setEnableConfigPortal(false);  // avoid captive portal on reconnect
-        wm.setConnectTimeout(10);
-        wm.autoConnect();                 // try reconnect using stored creds
-
         uint32_t start = millis();
-        while ((WiFi.status() != WL_CONNECTED) && (millis() - start < 10000))
+        WiFi.reconnect();
+
+        while ((WiFi.status() != WL_CONNECTED) && (millis() - start < WIFI_RECONNECT_ATTEMPT_MS))
         {
             delay(200);
 #if ENABLE_DEBUG_OUTPUT == 1
@@ -196,6 +332,23 @@ void WiFi_Reconnect()
             WEB_DEBUG_PRINT("WiFi reconnected")
 
             digitalWrite(LED_RT, 1);
+            gReconnectFailures = 0;
+            gRuntimeMode = NORMAL_MODE;
+        }
+        else
+        {
+            if (gReconnectFailures < 255)
+                gReconnectFailures++;
+
+            if (gReconnectFailures >= WIFI_RECONNECT_FAILS_BEFORE_PORTAL && (millis() - gLastConfigPortalMs) > CONFIG_PORTAL_COOLDOWN_MS)
+            {
+                gReconnectFailures = 0;
+                gConfigPortalRequested = true;
+#if ENABLE_DEBUG_OUTPUT == 1
+                Serial.println();
+                Serial.println(F("WiFi unavailable, scheduling WiFiManager portal"));
+#endif
+            }
         }
     }
 }
@@ -306,30 +459,6 @@ bool write_to_file(const char* file_name, String contents) {
     return true;
 }
 
-void saveParamCallback()
-{
-    Serial.println("[CALLBACK] saveParamCallback fired");
-    mqttserver = custom_mqtt_server->getValue();
-    write_to_file(serverfile, mqttserver);
-
-    mqttport = custom_mqtt_port->getValue();
-    write_to_file(portfile, mqttport);
-
-    mqtttopic = custom_mqtt_topic->getValue();
-    write_to_file(topicfile, mqtttopic);
-
-    mqttuser = custom_mqtt_user->getValue();
-    write_to_file(userfile, mqttuser);
-
-    mqttpwd = custom_mqtt_pwd->getValue();
-    write_to_file(secretfile, mqttpwd);
-
-    if (StartedConfigAfterBoot)
-    {
-        ESP.restart();
-    }
-}
-
 String getId()
 {
     #ifdef ESP8266
@@ -349,7 +478,7 @@ void setup()
     #endif
     WEB_DEBUG_PRINT("Setup()");
 
-    #ifdef ENABLE_DOUBLE_RESET
+    #if ENABLE_DOUBLE_RESET == 1
     drd = new DoubleResetDetector(DRD_TIMEOUT, DRD_ADDRESS);
     #endif
 
@@ -371,7 +500,7 @@ void setup()
         mqttpwd = load_from_file(secretfile, "");
     #endif
 
-    #ifdef ENABLE_DOUBLE_RESET
+    #if ENABLE_DOUBLE_RESET == 1
     if (drd->detectDoubleReset()) {
         #if ENABLE_DEBUG_OUTPUT == 1
             Serial.println(F("Double reset detected"));
@@ -386,71 +515,55 @@ void setup()
     #if MQTT_SUPPORTED == 1
         // make sure the packet size is set correctly in the library
         MqttClient.setBufferSize(MQTT_MAX_PACKET_SIZE);
-
-        custom_mqtt_server = new WiFiManagerParameter("server", "mqtt server", mqttserver.c_str(), 40);
-        custom_mqtt_port = new WiFiManagerParameter("port", "mqtt port", mqttport.c_str(), 6);
-        custom_mqtt_topic = new WiFiManagerParameter("topic", "mqtt topic", mqtttopic.c_str(), 64);
-        custom_mqtt_user = new WiFiManagerParameter("username", "mqtt username", mqttuser.c_str(), 40);
-        custom_mqtt_pwd = new WiFiManagerParameter("password", "mqtt password", mqttpwd.c_str(), 40);
-
-        wm.addParameter(custom_mqtt_server);
-        wm.addParameter(custom_mqtt_port);
-        wm.addParameter(custom_mqtt_topic);
-        wm.addParameter(custom_mqtt_user);
-        wm.addParameter(custom_mqtt_pwd);
-        wm.setSaveParamsCallback(saveParamCallback);
-
-        std::vector<const char*> menu = { "wifi","wifinoscan","param","sep","erase","restart" };
-        wm.setMenu(menu); // custom menu, pass vector
     #endif
 
+    std::vector<const char*> menu = { "wifi", "wifinoscan", "erase", "restart" };
+    wm.setMenu(menu);
+
     digitalWrite(LED_BL, 1);
-    // Set a timeout so the ESP doesn't hang waiting to be configured, for instance after a power failure
+    // First try fast STA connect only. If WiFi is unavailable, then move to WiFiManager portal.
     wm.setAPStaticIPConfig(IPAddress(192,168,4,1), IPAddress(192,168,4,1), IPAddress(255,255,255,0));
     wm.setConfigPortalTimeout(CONFIG_PORTAL_MAX_TIME_SECONDS);
-    // Automatically connect using saved credentials,
-    // if connection fails, it starts an access point with the specified name ("GrowattConfig")
-    bool res = wm.autoConnect("GrowattConfig", APPassword); // password protected wificonfig ap
+    wm.setConnectTimeout(FAST_CONNECT_TIMEOUT_SECONDS);
+    wm.setEnableConfigPortal(false);
+    bool res = wm.autoConnect("GrowattConfig");
 
-    if (!res)
+    if (res && WiFi.status() == WL_CONNECTED)
     {
         #if ENABLE_DEBUG_OUTPUT == 1
-            Serial.println(F("Failed to connect"));
+            Serial.println(F("WiFi connected in STA mode"));
         #endif
-        ESP.restart();
+        gRuntimeMode = NORMAL_MODE;
     }
     else
     {
-        digitalWrite(LED_BL, 0);
+        gRuntimeMode = RECONNECTING;
         #if ENABLE_DEBUG_OUTPUT == 1
-            //if you get here you have connected to the WiFi
-            Serial.println(F("connected...yeey :)"));
+            Serial.println(F("No WiFi available, opening WiFiManager portal"));
         #endif
+        enterConfigPortal("Initial WiFi unavailable");
     }
 
-    while (WiFi.status() != WL_CONNECTED)
-    {
-        WiFi_Reconnect();
-    }
+    digitalWrite(LED_BL, 0);
 
     // Initialize time via NTP for proper timestamp generation
-    configTime(0, 0, "pool.ntp.org");
-    time_t now = time(nullptr);
-    for (uint8_t i = 0; i < 10 && now < 100000; i++) {
-        delay(500);
-        now = time(nullptr);
+    if (WiFi.status() == WL_CONNECTED)
+    {
+        configTime(0, 0, "pool.ntp.org");
+        time_t now = time(nullptr);
+        for (uint8_t i = 0; i < 10 && now < 100000; i++) {
+            delay(500);
+            now = time(nullptr);
+        }
     }
 
     #if MQTT_SUPPORTED == 1
-        uint16_t port = mqttport.toInt();
-        if (port == 0)
-            port = 1883;
+        updateMqttClientServer();
         #if ENABLE_DEBUG_OUTPUT == 1
             Serial.print(F("MqttServer: ")); Serial.println(mqttserver);
-            Serial.print(F("MqttPort: ")); Serial.println(port);
+            Serial.print(F("MqttPort: ")); Serial.println(mqttport);
             Serial.print(F("MqttTopic: ")); Serial.println(mqtttopic);
         #endif
-        MqttClient.setServer(mqttserver.c_str(), port);
     #endif
     
 
@@ -463,6 +576,8 @@ void setup()
     httpServer.on("/solar_api/v1/GetLoggerInfo.cgi", SendLoggerInfoSite);
     httpServer.on("/solar_api/v1/GetActiveDeviceInfo.cgi", SendActiveDeviceInfoSite);
     httpServer.on("/StartAp", StartConfigAccessPoint);
+    httpServer.on("/settings", HTTP_GET, SendSettingsSite);
+    httpServer.on("/settings", HTTP_POST, HandleSettingsPost);
     httpServer.on("/postCommunicationModbus", SendPostSite);
     httpServer.on("/postCommunicationModbus_p", HTTP_POST, handlePostData);
     httpServer.on("/", MainPage);
@@ -476,70 +591,70 @@ void setup()
     Inverter.ConfigureExportLimit(100);
 #endif
 
-    httpUpdater.setup(&httpServer, update_path, UPDATE_USER, UPDATE_PASSWORD);
+    httpUpdater.setup(&httpServer, update_path);
     httpServer.begin();
 }
 
 void SendJsonSite(void)
 {
-    JsonString[0] = '\0';
-    Inverter.CreateJson(JsonString, WiFi.macAddress().c_str());
-    httpServer.send(200, "application/json", JsonString);
+    JsonPayload[0] = '\0';
+    Inverter.CreateJson(JsonPayload, WiFi.macAddress().c_str());
+    httpServer.send(200, "application/json", JsonPayload);
 }
 
 void SendUiJsonSite(void)
 {
-    JsonString[0] = '\0';
-    Inverter.CreateUIJson(JsonString);
-    httpServer.send(200, "application/json", JsonString);
+    JsonPayload[0] = '\0';
+    Inverter.CreateUIJson(JsonPayload);
+    httpServer.send(200, "application/json", JsonPayload);
 }
 
 void SendFroniusSite(void)
 {
-    JsonString[0] = '\0';
-    Inverter.CreateFroniusJson(JsonString);
-    httpServer.send(200, "application/json", JsonString);
+    JsonPayload[0] = '\0';
+    Inverter.CreateFroniusJson(JsonPayload);
+    httpServer.send(200, "application/json", JsonPayload);
 }
 
 void SendPowerFlowSite(void)
 {
-    JsonString[0] = '\0';
-    Inverter.CreatePowerFlowJson(JsonString);
-    httpServer.send(200, "application/json", JsonString);
+    JsonPayload[0] = '\0';
+    Inverter.CreatePowerFlowJson(JsonPayload);
+    httpServer.send(200, "application/json", JsonPayload);
 }
 
 void SendDeviceInfoSite(void)
 {
-    JsonString[0] = '\0';
-    Inverter.CreateDeviceInfoJson(JsonString);
-    httpServer.send(200, "application/json", JsonString);
+    JsonPayload[0] = '\0';
+    Inverter.CreateDeviceInfoJson(JsonPayload);
+    httpServer.send(200, "application/json", JsonPayload);
 }
 
 void SendInverterInfoSite(void)
 {
-    JsonString[0] = '\0';
-    Inverter.CreateInverterInfoJson(JsonString);
-    httpServer.send(200, "application/json", JsonString);
+    JsonPayload[0] = '\0';
+    Inverter.CreateInverterInfoJson(JsonPayload);
+    httpServer.send(200, "application/json", JsonPayload);
 }
 
 void SendLoggerInfoSite(void)
 {
-    JsonString[0] = '\0';
-    Inverter.CreateLoggerInfoJson(JsonString);
-    httpServer.send(200, "application/json", JsonString);
+    JsonPayload[0] = '\0';
+    Inverter.CreateLoggerInfoJson(JsonPayload);
+    httpServer.send(200, "application/json", JsonPayload);
 }
 
 void SendActiveDeviceInfoSite(void)
 {
-    JsonString[0] = '\0';
-    Inverter.CreateActiveDeviceInfoJson(JsonString);
-    httpServer.send(200, "application/json", JsonString);
+    JsonPayload[0] = '\0';
+    Inverter.CreateActiveDeviceInfoJson(JsonPayload);
+    httpServer.send(200, "application/json", JsonPayload);
 }
 
 void StartConfigAccessPoint(void)
 {
     String Text;
-    Text = "Configuration access point started ...\r\nConnect to Wifi: \"GrowattConfig\" with your password (default: \"growsolar\") and visit 192.168.4.1\r\nThe Stick will automatically go back to normal operation after " + String(CONFIG_PORTAL_MAX_TIME_SECONDS) + " seconds";
+    Text = "Configuration access point requested ...\r\nConnect to Wifi: \"GrowattConfig\" and visit 192.168.4.1\r\nThis portal is for WiFi/network configuration only.";
     httpServer.send(200, "text/plain", Text);
     wm.setAPStaticIPConfig(IPAddress(192,168,4,1), IPAddress(192,168,4,1), IPAddress(255,255,255,0));
     StartedConfigAfterBoot = true;
@@ -596,7 +711,7 @@ void handlePostData()
     uint16_t u16Tmp;
     uint32_t u32Tmp;
 
-    msg = JsonString;
+    msg = JsonPayload;
     msg[0] = 0;
 
     if (!httpServer.hasArg("reg") || !httpServer.hasArg("val"))
@@ -701,7 +816,7 @@ uint8_t refreshCycle = 0;
 
 void loop()
 {
-    #ifdef ENABLE_DOUBLE_RESET
+    #if ENABLE_DOUBLE_RESET == 1
     drd->loop();
     #endif
 
@@ -714,16 +829,16 @@ void loop()
 
         if( AP_BUTTON_PRESSED )
         {
-            if (btnPressed > 5)
+            if (btnPressed < 255)
+                btnPressed++;
+
+            if (btnPressed > 5 && !gButtonPortalLatched)
             {
                 #if ENABLE_DEBUG_OUTPUT == 1
                     Serial.println("Handle press");
                 #endif
                 StartedConfigAfterBoot = true;
-            }
-            else
-            {
-                btnPressed++;
+                gButtonPortalLatched = true;
             }
             #if ENABLE_DEBUG_OUTPUT == 1
                 Serial.print("Btn pressed");
@@ -732,21 +847,19 @@ void loop()
         else
         {
             btnPressed = 0;
+            gButtonPortalLatched = false;
         }
     }
 
-    if (StartedConfigAfterBoot == true)
+    if ((StartedConfigAfterBoot || gConfigPortalRequested) && ((millis() - gLastConfigPortalMs) > CONFIG_PORTAL_COOLDOWN_MS))
     {
         digitalWrite(LED_BL, 1);
         httpServer.stop();
         #if ENABLE_DEBUG_OUTPUT == 1
             Serial.println("Config after boot started");
         #endif
-        wm.setConfigPortalTimeout(CONFIG_PORTAL_MAX_TIME_SECONDS);
-        wm.startConfigPortal("GrowattConfig", APPassword);
-        digitalWrite(LED_BL, 0);
-        delay(3000);
-        ESP.restart();
+        enterConfigPortal("Requested from runtime");
+        httpServer.begin();
     }
 
     WiFi_Reconnect();
@@ -804,12 +917,12 @@ void loop()
 
 
                     // Create JSON string
-                    JsonString[0] = '\0';
-                    Inverter.CreateJson(JsonString, WiFi.macAddress().c_str());
+                    JsonPayload[0] = '\0';
+                    Inverter.CreateJson(JsonPayload, WiFi.macAddress().c_str());
 
                     #if MQTT_SUPPORTED == 1
                     if (MqttClient.connected())
-                        MqttClient.publish(mqtttopic.c_str(), JsonString, true);
+                        MqttClient.publish(mqtttopic.c_str(), JsonPayload, true);
                     #endif
 
                     digitalWrite(LED_RT, 0); // clear red led if everything is ok
@@ -826,10 +939,10 @@ void loop()
                     else
                     {
                         WEB_DEBUG_PRINT("Retry counter\n")
-                        sprintf(JsonString, "{\"InverterStatus\": -1 }");
+                        sprintf(JsonPayload, "{\"InverterStatus\": -1 }");
                         #if MQTT_SUPPORTED == 1
                         if (MqttClient.connected())
-                            MqttClient.publish(mqtttopic.c_str(), JsonString, true);
+                            MqttClient.publish(mqtttopic.c_str(), JsonPayload, true);
                         #endif
                         digitalWrite(LED_RT, 1); // set red led in case of error
                     }

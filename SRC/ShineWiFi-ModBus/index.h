@@ -41,6 +41,17 @@ copies or substantial portions of the Software. -->
   <a href="./solar_api/v1/GetActiveDeviceInfo.cgi">Fronius Active Device</a> -
   <a href="./solar_api/v1/GetPowerFlowRealtimeData.fcgi">Fronius Power Flow</a>
 
+  <h3>Runtime MQTT Settings</h3>
+  <form id="mqttSettingsForm" action="./settings" method="POST">
+    <label>Server <input type="text" id="mqttserver" name="mqttserver" maxlength="40"></label><br>
+    <label>Port <input type="number" id="mqttport" name="mqttport" min="1" max="65535"></label><br>
+    <label>Topic <input type="text" id="mqtttopic" name="mqtttopic" maxlength="64"></label><br>
+    <label>User <input type="text" id="mqttuser" name="mqttuser" maxlength="40"></label><br>
+    <label>Password <input type="password" id="mqttpwd" name="mqttpwd" maxlength="40"></label><br>
+    <button type="submit">Save MQTT settings</button>
+    <span id="settingsStatus"></span>
+  </form>
+
 </body>
 <script>
 
@@ -80,6 +91,54 @@ var chartT = new Highcharts.Chart({
     crosshairs: true,
   }
 });
+
+function updateSettingsStatus(message, isError) {
+  const status = document.getElementById("settingsStatus");
+  status.textContent = message;
+  status.style.color = isError ? "red" : "green";
+}
+
+function loadSettings() {
+  fetch("./settings")
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error("Failed to load settings");
+      }
+      return response.json();
+    })
+    .then((data) => {
+      document.getElementById("mqttserver").value = data.mqttserver || "";
+      document.getElementById("mqttport").value = data.mqttport || "1883";
+      document.getElementById("mqtttopic").value = data.mqtttopic || "";
+      document.getElementById("mqttuser").value = data.mqttuser || "";
+      document.getElementById("mqttpwd").value = data.mqttpwd || "";
+    })
+    .catch(() => {
+      updateSettingsStatus("Settings unavailable", true);
+    });
+}
+
+document.getElementById("mqttSettingsForm").addEventListener("submit", function(event) {
+  event.preventDefault();
+
+  const formData = new URLSearchParams(new FormData(event.target));
+  fetch("./settings", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded"
+    },
+    body: formData.toString()
+  })
+  .then((response) => response.text().then((text) => ({ ok: response.ok, text })))
+  .then((result) => {
+    updateSettingsStatus(result.text, !result.ok);
+  })
+  .catch(() => {
+    updateSettingsStatus("Failed to save settings", true);
+  });
+});
+
+loadSettings();
 
 setInterval(function ( ) {
   var xhttp = new XMLHttpRequest();
